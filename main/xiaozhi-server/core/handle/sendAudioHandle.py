@@ -314,7 +314,18 @@ async def send_tts_message(conn: "ConnectionHandler", state, text=None):
         conn.clearSpeakStatus()
 
     # 发送消息到客户端
-    await conn.websocket.send(json.dumps(message))
+    payload = json.dumps(message)
+    await conn.websocket.send(payload)
+    await _send_to_mirrors(conn, payload)
+
+
+async def _send_to_mirrors(conn: "ConnectionHandler", payload: str):
+    """把裝置連線的文字訊息同步給工作台（只送文字，不送音訊）。"""
+    for mirror in list(getattr(conn, "mirror_connections", ()) or ()):
+        try:
+            await mirror.websocket.send(payload)
+        except Exception:
+            conn.mirror_connections.discard(mirror)
 
 
 async def send_stt_message(conn: "ConnectionHandler", text):
