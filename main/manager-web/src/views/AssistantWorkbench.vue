@@ -385,7 +385,7 @@
 <script>
 import Api from '@/apis/api'
 import HeaderBar from '@/components/HeaderBar.vue'
-import { buildWebSocketUrl, extractResources, isAllowedWebChatOrigin, messageParts, readTeaching, writeTeaching } from '@/utils/assistantWorkbenchUtils.mjs'
+import { buildWebSocketUrl, extractResources, isAllowedWebChatOrigin, messageParts, parseAllowedHosts, readTeaching, writeTeaching } from '@/utils/assistantWorkbenchUtils.mjs'
 
 const PAGE_SIZE = 20
 
@@ -750,9 +750,10 @@ export default {
       if (this.webChatSocket && this.webChatSocket.readyState < WebSocket.CLOSING) return
 
       const agentId = this.selectedAgentId
-      if (process.env.NODE_ENV === 'production' && !isAllowedWebChatOrigin(window.location.origin)) {
+      if (process.env.NODE_ENV === 'production' &&
+        !isAllowedWebChatOrigin(window.location.origin, parseAllowedHosts(process.env.VUE_APP_WEB_CHAT_ALLOWED_HOSTS))) {
         this.webChatStatus = 'error'
-        this.webChatError = '請使用 100.67.131.77 或 aiot.dev-serve.me 的 HTTPS 管理網址進行文字聊天。'
+        this.webChatError = '請使用支援小智 WebSocket 代理的 HTTPS 管理網址進行文字聊天。'
         return
       }
       this.webChatConnecting = true
@@ -828,7 +829,7 @@ export default {
         socket.onmessage = (event) => this.handleWebChatMessage(event.data)
         socket.onerror = () => {
           this.webChatStatus = 'error'
-          this.webChatError = '無法連線到小智，請確認使用 100.67.131.77 或 aiot.dev-serve.me 的 HTTPS 網址後重試。'
+          this.webChatError = '無法連線到小智，請確認目前的 HTTPS 管理網址支援 /xiaozhi/v1/ WebSocket 代理後重試。'
         }
         socket.onclose = () => {
           if (this.webChatSocket === socket) this.webChatSocket = null

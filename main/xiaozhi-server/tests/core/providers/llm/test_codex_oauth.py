@@ -7,13 +7,24 @@ import types
 import pytest
 
 
+_STUBBED = ("config.logger", "core.providers.llm.base")
+_originals = {name: sys.modules.get(name) for name in _STUBBED}
+
 fake_logger_module = types.ModuleType("config.logger")
 setattr(fake_logger_module, "setup_logging", lambda: None)
 sys.modules["config.logger"] = fake_logger_module
 fake_base_module = types.ModuleType("core.providers.llm.base")
 setattr(fake_base_module, "LLMProviderBase", object)
 sys.modules["core.providers.llm.base"] = fake_base_module
-mod = importlib.import_module("core.providers.llm.codex_oauth.codex_oauth")
+try:
+    mod = importlib.import_module("core.providers.llm.codex_oauth.codex_oauth")
+finally:
+    # 只在匯入受測模組時使用替身，之後還原，避免污染其他測試（例如 plugins_func 的 logger 變成 None）
+    for _name, _module in _originals.items():
+        if _module is None:
+            sys.modules.pop(_name, None)
+        else:
+            sys.modules[_name] = _module
 LLMProvider = mod.LLMProvider
 
 

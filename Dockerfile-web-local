@@ -3,7 +3,11 @@ WORKDIR /app
 COPY main/manager-web/package*.json ./
 RUN npm ci && node node_modules/v-code-diff/scripts/postinstall.cjs
 COPY main/manager-web ./
+# 部署時以 --build-arg 指定工作台允許的主機，避免在程式碼寫死私有 IP／網域
+ARG VUE_APP_WEB_CHAT_ALLOWED_HOSTS=
+ENV VUE_APP_WEB_CHAT_ALLOWED_HOSTS=${VUE_APP_WEB_CHAT_ALLOWED_HOSTS}
 RUN npm run build
 
-FROM ghcr.nju.edu.cn/xinnan-tech/xiaozhi-esp32-server:web_latest
+# 上游 web 映像（含 manager-api 與 nginx），改由官方登錄 ghcr.io 取得，不經中國境內鏡像站
+FROM ghcr.io/xinnan-tech/xiaozhi-esp32-server:web_latest
 COPY --from=web-builder /app/dist /usr/share/nginx/html

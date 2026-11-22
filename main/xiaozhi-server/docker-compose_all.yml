@@ -1,9 +1,11 @@
 # Docker安裝全模組
+# 必要的部署參數放在同目錄的 .env（不提交 Git），範例見 .env.example。
+# 升級前請先閱讀 docs/migration/runbook.md（資料庫備份、密碼、連接埠與回退步驟）。
 
 services:
   # Server模块
   xiaozhi-esp32-server:
-    image: xiaozhi-server-sv:deps-20261028
+    image: xiaozhi-server-sv:non-cn-20261122
     build:
       context: ../..
       dockerfile: Dockerfile-server-deps
@@ -15,31 +17,23 @@ services:
     networks:
       - default
     ports:
+      # 預設只綁定本機，由 xiaozhi-edge-proxy（8002）轉發 WebSocket／視覺分析。
+      # 若裝置的 OTA websocket 位址直接指向 :8000，請在 .env 設定 XIAOZHI_BIND_ADDR=0.0.0.0（或特定網卡 IP）。
       # ws服务端
-      - "8000:8000"
+      - "${XIAOZHI_BIND_ADDR:-127.0.0.1}:8000:8000"
       # http服务的端口，用于视觉分析接口
-      - "8003:8003"
-    security_opt:
-      - seccomp:unconfined
+      - "${XIAOZHI_BIND_ADDR:-127.0.0.1}:8003:8003"
+    # 已移除 seccomp:unconfined，使用 Docker 預設 seccomp 設定檔
     environment:
       - TZ=Asia/Taipei
     volumes:
       # 配置文件目录
       - ./data:/opt/xiaozhi-esp32-server/data
-      # 模型文件挂接，很重要
+      # 模型文件挂接（FunASR/SenseVoice；改用 GroqASR/OpenaiASR 且無角色使用 FunASR 後可移除）
       - ./models/SenseVoiceSmall/model.pt:/opt/xiaozhi-esp32-server/models/SenseVoiceSmall/model.pt
-      # 覆盖上游内建提示词，避免强制虚构国籍或政治身份
+      # 原始碼已由 Dockerfile-server-deps 打包進映像，不再逐檔掛載覆寫。
+      # 提示詞保留唯讀掛載，方便不重建映像即可調整。
       - ./agent-base-prompt.txt:/opt/xiaozhi-esp32-server/agent-base-prompt.txt:ro
-      # Keep URLs visible to the chat UI but out of spoken TTS; extend auto-listen across brief pauses.
-      - ./core/utils/tts.py:/opt/xiaozhi-esp32-server/core/utils/tts.py:ro
-      - ./core/providers/vad/silero.py:/opt/xiaozhi-esp32-server/core/providers/vad/silero.py:ro
-      # 套用本地連線邏輯修正：位置相關問題先查裝置定位
-      - ./core/connection.py:/opt/xiaozhi-esp32-server/core/connection.py:ro
-      - ./core/utils/dialogue.py:/opt/xiaozhi-esp32-server/core/utils/dialogue.py:ro
-      - ./plugins_func/functions/web_search.py:/opt/xiaozhi-esp32-server/plugins_func/functions/web_search.py:ro
-      # Native Codex OAuth provider and model-id/manager-secret wiring
-      - ./core/providers/llm/codex_oauth:/opt/xiaozhi-esp32-server/core/providers/llm/codex_oauth:ro
-      - ./core/utils/modules_initialize.py:/opt/xiaozhi-esp32-server/core/utils/modules_initialize.py:ro
 
   # manager-api和manager-web模块
   xiaozhi-esp32-server-web:
@@ -62,8 +56,8 @@ services:
     environment:
       - TZ=Asia/Taipei
       - SPRING_DATASOURCE_DRUID_URL=jdbc:mysql://xiaozhi-esp32-server-db:3306/xiaozhi_esp32_server?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Taipei&nullCatalogMeansCurrent=true&connectTimeout=30000&socketTimeout=30000&autoReconnect=true&failOverReadOnly=false&maxReconnects=10
-      - SPRING_DATASOURCE_DRUID_USERNAME=root
-      - SPRING_DATASOURCE_DRUID_PASSWORD=123456
+      - SPRING_DATASOURCE_DRUID_USERNAME=${MYSQL_APP_USER:-root}
+      - SPRING_DATASOURCE_DRUID_PASSWORD=${MYSQL_APP_PASSWORD:-${MYSQL_ROOT_PASSWORD:?請在 .env 設定 MYSQL_ROOT_PASSWORD（見 .env.example）}}
       - SPRING_DATA_REDIS_HOST=xiaozhi-esp32-server-redis
       - SPRING_DATA_REDIS_PASSWORD=
       - SPRING_DATA_REDIS_PORT=6379
@@ -103,7 +97,8 @@ services:
       - ./mysql/data:/var/lib/mysql
     environment:
       - TZ=Asia/Taipei
-      - MYSQL_ROOT_PASSWORD=123456
+      # 只在第一次初始化資料目錄時生效；既有資料庫改密碼請依 runbook 執行 ALTER USER
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:?請在 .env 設定 MYSQL_ROOT_PASSWORD（見 .env.example）}
       - MYSQL_DATABASE=xiaozhi_esp32_server
       - MYSQL_INITDB_ARGS="--character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci"
   # redis模块

@@ -141,42 +141,48 @@ class PromptManager:
 
         return today_date, today_weekday, lunar_date
 
-    def _get_location_info(self, client_ip: str) -> str:
-        """获取位置信息"""
+    def _get_location_info(self, client_ip: str, config: Dict[str, Any] = None) -> str:
+        """取得裝置粗略位置；未啟用 IP 定位或查不到時使用設定的預設地點，否則回傳空字串。
+
+        不會呼叫任何預設的第三方定位服務（見 core/utils/geolocation.py）。
+        """
+        config = config or self.config
         try:
-            # 先从缓存获取
             cached_location = self.cache_manager.get(self.CacheType.LOCATION, client_ip)
             if cached_location is not None:
                 return cached_location
 
-            # 缓存未命中，调用API获取
             from core.utils.util import get_ip_info
 
-            ip_info = get_ip_info(client_ip, self.logger)
-            city = ip_info.get("city", "未知位置")
-            location = f"{city}"
+            ip_info = get_ip_info(client_ip, self.logger, config) or {}
+            location = (ip_info.get("city") or "").strip()
+            if not location:
+                location = str(
+                    (config.get("plugins", {}) or {})
+                    .get("get_weather", {})
+                    .get("default_location")
+                    or ""
+                ).strip()
 
-            # 存入缓存
-            self.cache_manager.set(self.CacheType.LOCATION, client_ip, location)
+            # 只快取確定的位置；未知位置下次連線仍可重新判斷（例如管理員之後才設定預設地點）
+            if location:
+                self.cache_manager.set(self.CacheType.LOCATION, client_ip, location)
             return location
         except Exception as e:
             self.logger.bind(tag=TAG).error(f"获取位置信息失败: {e}")
-            return "未知位置"
+            return ""
 
     def _get_weather_info(self, conn: "ConnectionHandler", location: str) -> str:
-        """获取天气信息"""
+        """取得天氣上下文；失敗時回傳空字串且不快取，讓模型改用 get_weather 工具。"""
         try:
-            # 先从缓存获取
             cached_weather = self.cache_manager.get(self.CacheType.WEATHER, location)
             if cached_weather is not None:
                 return cached_weather
 
-            # 缓存未命中，调用 async get_weather 函数
             # Windows ProactorEventLoop 不支持 run_coroutine_threadsafe().result()
             # 因此用 call_soon_threadsafe 提交任务 + threading.Event 等待结果
             # 注意：Event.wait() 只阻塞当前线程池线程，不阻塞主事件循环
-            from plugins_func.functions.get_weather import get_weather
-            from plugins_func.register import ActionResponse
+            from plugins_func.functions.get_weather import fetch_weather_report
 
             result_holder = []
             exception_holder = []
@@ -184,7 +190,7 @@ class PromptManager:
             async def _call():
                 try:
                     result_holder.append(
-                        await get_weather(conn, location=location, lang="zh_CN")
+                        await fetch_weather_report(conn.config, location, "zh_TW")
                     )
                 except Exception as e:
                     exception_holder.append(e)
@@ -197,16 +203,16 @@ class PromptManager:
                 raise TimeoutError("获取天气信息超时")
             if exception_holder:
                 raise exception_holder[0]
-            result = result_holder[0]
-            if isinstance(result, ActionResponse):
-                weather_report = result.result
+            ok, weather_report = result_holder[0]
+            if ok:
                 self.cache_manager.set(self.CacheType.WEATHER, location, weather_report)
                 return weather_report
-            return "天气信息获取失败"
+            self.logger.bind(tag=TAG).info(f"天氣上下文未取得：{weather_report}")
+            return ""
 
         except Exception as e:
             self.logger.bind(tag=TAG).error(f"获取天气信息失败: {e}")
-            return "天气信息获取失败"
+            return ""
 
     def update_context_info(self, conn, client_ip: str):
         """同步更新上下文信息"""
@@ -221,7 +227,9 @@ class PromptManager:
                 )
             ):
                 # 获取位置信息（使用全局缓存）
-                local_address = self._get_location_info(client_ip)
+                local_address = self._get_location_info(
+                    client_ip, getattr(conn, "config", None)
+                )
 
             if (
                 self.base_prompt_template

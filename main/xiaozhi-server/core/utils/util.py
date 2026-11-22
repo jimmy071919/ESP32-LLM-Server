@@ -121,25 +121,23 @@ def is_private_ip(ip_addr):
         return False  # IP address format error or insufficient segments
 
 
-def get_ip_info(ip_addr, logger):
-    try:
-        # 导入全局缓存管理器
-        from core.utils.cache.manager import cache_manager, CacheType
+def get_ip_info(ip_addr, logger, config=None):
+    """以可選的非中國 IP 定位服務估計城市；預設關閉，回傳 {} 表示未知。
 
-        # 先从缓存获取
-        cached_ip_info = cache_manager.get(CacheType.IP_INFO, ip_addr)
+    詳細設定見 core/utils/geolocation.py。不再呼叫任何預設的第三方定位 API。
+    """
+    try:
+        from core.utils.cache.manager import cache_manager, CacheType
+        from core.utils.geolocation import lookup_ip_location
+
+        cache_key = ip_addr or ""
+        cached_ip_info = cache_manager.get(CacheType.IP_INFO, cache_key)
         if cached_ip_info is not None:
             return cached_ip_info
 
-        # 缓存未命中，调用API
-        if is_private_ip(ip_addr):
-            ip_addr = ""
-        url = f"https://whois.pconline.com.cn/ipJson.jsp?json=true&ip={ip_addr}"
-        resp = requests.get(url).json()
-        ip_info = {"city": resp.get("city")}
-
-        # 存入缓存
-        cache_manager.set(CacheType.IP_INFO, ip_addr, ip_info)
+        ip_info = lookup_ip_location(ip_addr, config, logger)
+        if ip_info:
+            cache_manager.set(CacheType.IP_INFO, cache_key, ip_info)
         return ip_info
     except Exception as e:
         logger.bind(tag=TAG).error(f"Error getting client ip info: {e}")

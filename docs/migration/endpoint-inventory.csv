@@ -1,0 +1,25 @@
+host,purpose,used_by,default_state_after_change,operator_country_class,notes
+api.openai.com,LLM / VLLM / ASR / TTS,LLM_OpenAIOfficial; VLLM_OpenAIVision; ASR_OpenaiASR; TTS_OpenAITTS,default LLM+VLLM (needs API key),non-CN,區域與資料保留依合約；正式產品使用 API 計費管道
+api.groq.com,ASR (Whisper),ASR_GroqASR,default ASR (needs API key),non-CN,
+speech.platform.bing.com,TTS (edge-tts),TTS_EdgeTTS,default TTS,non-CN,非正式 Microsoft 端點、無 SLA；正式環境改 Azure Speech 或 OpenAI TTS
+generativelanguage.googleapis.com,LLM / VLLM,LLM_GeminiLLM; VLLM_GeminiVision,optional,non-CN,
+geocoding-api.open-meteo.com,weather geocoding,get_weather,enabled when get_weather is enabled,non-CN,免費版限非商業；商用改 customer-geocoding-api.open-meteo.com + api_key
+api.open-meteo.com,weather forecast,get_weather; prompt context,enabled when get_weather is enabled,non-CN,資料 CC BY 4.0 需標示來源
+feeds.bbci.co.uk,news RSS,get_news_rss (default feed list),enabled when get_news_rss is enabled,non-CN,使用前確認 RSS 使用條款
+rss.dw.com,news RSS,get_news_rss (default feed list),enabled when get_news_rss is enabled,non-CN,使用前確認 RSS 使用條款
+feeds.npr.org,news RSS,get_news_rss (default feed list),enabled when get_news_rss is enabled,non-CN,使用前確認 RSS 使用條款
+api.tavily.com,web search,web_search (provider=tavily),default search provider (needs API key),non-CN,
+api.serply.io,web search,web_search (provider=serply),optional,non-CN,
+ipinfo.io,IP geolocation,core/utils/geolocation.py,off (geolocation.provider=none),non-CN,opt-in；會送出使用者公網 IP
+ipwho.is,IP geolocation,core/utils/geolocation.py,off (geolocation.provider=none),non-CN,opt-in；免費版限非商業
+ghcr.io,base images (build time),Dockerfile-server-deps; Dockerfile-web-local; Dockerfile-server,build only,non-CN,以 digest 固定
+pypi.org,python packages (build time),Dockerfile-server-deps; Dockerfile-server-base,build only,non-CN,
+download.pytorch.org,torch CPU wheels (build time),Dockerfile-server-deps,build only,non-CN,
+open.bigmodel.cn,ChatGLM LLM/VLLM,LLM_ChatGLMLLM; VLLM_ChatGLMVLLM,removed from defaults; disabled when unreferenced,CN,既有角色仍指派時保持啟用，需依 runbook 遷移
+devapi.qweather.com / *.qweatherapi.com,QWeather weather,old get_weather,removed (code no longer calls it),CN,舊外掛映射的 api_host/api_key 由 migration 清除；歷史 Git 中的金鑰需撤銷
+whois.pconline.com.cn,IP geolocation,old core/utils/util.py get_ip_info,removed,CN,
+newsnow.busiyi.world,news aggregator,get_news_from_newsnow,removed from defaults; mappings migrated to get_news_rss,CN-content,模組仍在但無預設 URL／來源
+www.chinanews.com.cn,news RSS,get_news_from_chinanews,removed from defaults; mappings migrated to get_news_rss,CN,模組仍在但無預設 URL
+metaso.cn,web search,old web_search,removed (provider not allowed),CN,
+ghcr.nju.edu.cn,image mirror,old Dockerfile-server-deps; Dockerfile-web-local,removed,CN,
+mirrors.aliyun.com,PyPI mirror,old Dockerfile-server-base,removed,CN,

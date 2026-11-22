@@ -160,6 +160,11 @@ Spearheaded by Professor Siyuan Liu's Team (South China University of Technology
 
 ---
 
+## 本分支：非中國服務部署（S2）
+
+本分支預設改用非中國供應商：Groq Whisper（ASR）、OpenAI 官方 API（LLM／視覺）、Edge TTS（開發用）、Open-Meteo（天氣）、RSS 白名單（新聞）、Tavily（搜尋），且預設不以 IP 定位使用者。
+部署、資料庫遷移、驗收與回退步驟見 [docs/migration/runbook.md](docs/migration/runbook.md)，現況與限制見 [docs/migration/current-state.md](docs/migration/current-state.md)。以下上游文件中提到的中國雲端服務僅供參考，並非本分支的預設。
+
 ## 部署文档
 
 ![Banners](docs/images/banner2.png)

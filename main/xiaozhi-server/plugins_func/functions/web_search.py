@@ -37,53 +37,6 @@ WEB_SEARCH_FUNCTION_DESC = {
 }
 
 
-async def _search_metaso(api_key: str, query: str, max_results: int) -> str:
-    """调用秘塔搜索API"""
-    url = "https://metaso.cn/api/v1/search"
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-    }
-    payload = {
-        "q": query,
-        "size": max_results,
-        "stream": False,
-        "scope": "webpage",
-        "includeSummary": True,
-        "includeRawContent": False,
-        "conciseSnippet": False,
-    }
-    logger.bind(tag=TAG).debug(f"秘塔搜索请求 | URL: {url} | payload: {payload}")
-    async with httpx.AsyncClient(timeout=httpx.Timeout(15.0, connect=3.0)) as client:
-        response = await client.post(url, json=payload, headers=headers)
-    data = response.json()
-    logger.bind(tag=TAG).debug(f"秘塔搜索响应 | status: {response.status_code}")
-
-    error_code = data.get("errCode", data.get("err_code"))
-    if error_code not in (None, 0, "0", 200, "200"):
-        return f"联网搜索服务返回错误代码 {error_code}，请检查搜索服务配置。"
-
-    webpages = data.get("webpages", [])
-    if not webpages:
-        return "未找到相关搜索结果。"
-
-    lines = ["【联网搜索结果】"]
-    for i, item in enumerate(webpages, 1):
-        title = item.get("title", "无标题")
-        snippet = item.get("summary", "")
-        date = item.get("date", "")
-        source_url = item.get("url") or item.get("link")
-        lines.append(f"{i}. 标题：{title}")
-        if date:
-            lines.append(f"   日期：{date}")
-        if snippet:
-            lines.append(f"   摘要：{snippet}")
-        if source_url:
-            lines.append(f"   来源网址：{source_url}")
-
-    return "\n".join(lines)
-
-
 async def _search_tavily(api_key: str, query: str, max_results: int) -> str:
     """调用Tavily搜索API"""
     url = "https://api.tavily.com/search"
@@ -162,6 +115,13 @@ async def _search_serply(api_key: str, query: str, max_results: int) -> str:
     return "\n".join(lines)
 
 
+# 允許的搜尋供應商（非中國服務）。新增供應商時請同步更新 Manager API 外掛欄位說明。
+SEARCH_PROVIDERS = {
+    "tavily": "_search_tavily",
+    "serply": "_search_serply",
+}
+
+
 @register_function("web_search", WEB_SEARCH_FUNCTION_DESC, ToolType.SYSTEM_CTL)
 async def web_search(conn: "ConnectionHandler", query: str = None):
     logger.bind(tag=TAG).info(f"web_search 被调用 | query={query}")
@@ -173,6 +133,15 @@ async def web_search(conn: "ConnectionHandler", query: str = None):
     max_results = int(web_search_config.get("max_results", 3))
     logger.bind(tag=TAG).info(f"web_search 配置 | provider={provider} | max_results={max_results} | config_keys={list(web_search_config.keys())}")
 
+    # 只允許明確列出的搜尋供應商；未知或空白 provider 一律拒絕，不會回退到其他服務
+    if provider not in SEARCH_PROVIDERS:
+        return ActionResponse(
+            Action.REQLLM,
+            f"联网搜索功能未配置或配置的搜索源无效（当前：{provider or '未设置'}，"
+            f"支持：{' / '.join(SEARCH_PROVIDERS)}），请检查配置。",
+            None,
+        )
+
     api_key = web_search_config.get("api_key", "")
     if not api_key:
         return ActionResponse(
@@ -182,18 +151,7 @@ async def web_search(conn: "ConnectionHandler", query: str = None):
         )
 
     try:
-        if provider == "metaso":
-            result_text = await _search_metaso(api_key, query, max_results)
-        elif provider == "tavily":
-            result_text = await _search_tavily(api_key, query, max_results)
-        elif provider == "serply":
-            result_text = await _search_serply(api_key, query, max_results)
-        else:
-            return ActionResponse(
-                Action.REQLLM,
-                f"联网搜索功能未配置或配置的搜索源无效（当前：{provider}），请检查配置。",
-                None,
-            )
+        result_text = await globals()[SEARCH_PROVIDERS[provider]](api_key, query, max_results)
         logger.bind(tag=TAG).info(f"搜索结果组装完成:\n{result_text}")
     except httpx.TimeoutException:
         logger.bind(tag=TAG).error("联网搜索请求超时")

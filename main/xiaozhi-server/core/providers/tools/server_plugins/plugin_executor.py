@@ -126,9 +126,13 @@ class ServerPluginExecutor(ToolExecutor):
                 if func_name == "get_news_from_newsnow":
                     self._init_news_source_description(func_item, func_name)
 
+                description = func_item.description
+                if func_name == "get_news_rss":
+                    description = self._rss_news_description(func_item.description)
+
                 tools[func_name] = ToolDefinition(
                     name=func_name,
-                    description=func_item.description,
+                    description=description,
                     tool_type=ToolType.SERVER_PLUGIN,
                 )
 
@@ -145,12 +149,34 @@ class ServerPluginExecutor(ToolExecutor):
             .get(func_name, {})
             .get("news_sources", "")
         )
-        if not news_sources:
-            news_sources = "澎湃新闻;百度热搜;财联社"
-        sources_str = news_sources.replace(";", "、")
+        source_description = (
+            f"新闻源名称，例如{news_sources.replace(';', '、')}。可选，不提供则使用第一个配置的新闻源"
+            if news_sources
+            else "新闻源名称；新闻源未配置时无法获取新闻"
+        )
         try:
             func_item.description["function"]["parameters"]["properties"]["source"][
                 "description"
-            ] = f"新闻源的标准中文名称，例如{sources_str}等。可选参数，如果不提供则使用默认新闻源"
+            ] = source_description
         except (KeyError, TypeError):
             pass
+
+    def _rss_news_description(self, description):
+        """依目前連線（角色）的 RSS 設定，列出可用來源名稱；回傳副本，避免跨連線互相污染。"""
+        import copy
+        from plugins_func.functions.get_news_rss import parse_feeds
+
+        feeds = parse_feeds(
+            (self.config.get("plugins", {}) or {}).get("get_news_rss", {}).get("feeds")
+        )
+        description = copy.deepcopy(description)
+        names = "、".join(feed["name"] for feed in feeds)
+        try:
+            description["function"]["parameters"]["properties"]["source"]["description"] = (
+                f"新聞來源名稱，可選值：{names}。可選，不提供則綜合所有來源"
+                if names
+                else "新聞來源尚未設定；呼叫後會回報需要管理員設定"
+            )
+        except (KeyError, TypeError):
+            pass
+        return description

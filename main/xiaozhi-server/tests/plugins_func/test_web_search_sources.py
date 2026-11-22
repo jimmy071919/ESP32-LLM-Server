@@ -33,13 +33,6 @@ class FakeAsyncClient:
 
 
 class WebSearchSourceTests(unittest.IsolatedAsyncioTestCase):
-    async def test_metaso_includes_source_url(self):
-        await self._assert_source_url(
-            "_search_metaso",
-            {"webpages": [{"title": "Example", "summary": "Summary", "url": "https://example.org/a"}]},
-            "https://example.org/a",
-        )
-
     async def test_tavily_includes_source_url(self):
         await self._assert_source_url(
             "_search_tavily",

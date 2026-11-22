@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildWebSocketUrl, extractResources, isAllowedWebChatOrigin, messageParts, readTeaching, writeTeaching } from '../src/utils/assistantWorkbenchUtils.mjs'
+import { buildWebSocketUrl, extractResources, isAllowedWebChatOrigin, messageParts, parseAllowedHosts, readTeaching, writeTeaching } from '../src/utils/assistantWorkbenchUtils.mjs'
 
 describe('assistant workbench helpers', () => {
   it('adds and replaces teaching without changing the original prompt', () => {
@@ -50,21 +50,33 @@ describe('assistant workbench helpers', () => {
       { url: 'ws://public.example.org/xiaozhi/v1/', token: 'secret-token' },
       'AA:BB:CC:DD:EE:FF',
       'web-chat-1',
-      'https://100.67.131.77:18002'
+      'https://10.0.0.5:18002'
     ))
     expect(url.protocol).toBe('wss:')
-    expect(url.host).toBe('100.67.131.77:18002')
+    expect(url.host).toBe('10.0.0.5:18002')
     expect(url.pathname).toBe('/xiaozhi/v1/')
     expect(url.searchParams.get('authorization')).toBe('Bearer secret-token')
     expect(url.searchParams.get('device-id')).toBe('AA:BB:CC:DD:EE:FF')
     expect(url.searchParams.get('client-id')).toBe('web-chat-1')
   })
 
-  it('allows the public HTTPS manager domain and private HTTPS IP only', () => {
-    expect(isAllowedWebChatOrigin('https://aiot.dev-serve.me')).toBe(true)
-    expect(isAllowedWebChatOrigin('https://100.67.131.77:18002')).toBe(true)
-    expect(isAllowedWebChatOrigin('https://jimmylinux.tailfdd8d8.ts.net')).toBe(false)
-    expect(isAllowedWebChatOrigin('http://aiot.dev-serve.me')).toBe(false)
-    expect(isAllowedWebChatOrigin('https://example.org')).toBe(false)
+  it('accepts canonical HTTPS manager origins without pinning a host', () => {
+    expect(isAllowedWebChatOrigin('https://manager.example.com')).toBe(true)
+    expect(isAllowedWebChatOrigin('https://10.0.0.5:18002')).toBe(true)
+    expect(isAllowedWebChatOrigin('https://example.org')).toBe(true)
+    expect(isAllowedWebChatOrigin('http://manager.example.com')).toBe(false)
+    expect(isAllowedWebChatOrigin('https://example.org/path')).toBe(false)
+    expect(isAllowedWebChatOrigin('https://user:pass@example.org')).toBe(false)
+    expect(isAllowedWebChatOrigin('not a url')).toBe(false)
+  })
+
+  it('enforces the deployment-configured host allowlist when present', () => {
+    const hosts = parseAllowedHosts(' Manager.Example.com, 10.0.0.5 ')
+    expect(hosts).toEqual(['manager.example.com', '10.0.0.5'])
+    expect(isAllowedWebChatOrigin('https://manager.example.com', hosts)).toBe(true)
+    expect(isAllowedWebChatOrigin('https://10.0.0.5:18002', hosts)).toBe(true)
+    expect(isAllowedWebChatOrigin('https://evil.example.net', hosts)).toBe(false)
+    expect(isAllowedWebChatOrigin('https://manager.example.com', '')).toBe(true)
+    expect(parseAllowedHosts(undefined)).toEqual([])
   })
 })

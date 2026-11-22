@@ -6,15 +6,27 @@ const FILE_EXTENSIONS = new Set([
   'ppt', 'pptx', 'txt', 'wav', 'webp', 'xls', 'xlsx', 'zip'
 ])
 
-const WEB_CHAT_ALLOWED_HOSTS = new Set([
-  '100.67.131.77',
-  'aiot.dev-serve.me'
-])
+/**
+ * 解析部署設定的 Web Chat 允許主機（逗號或空白分隔，例如 "aiot.example.com, 10.0.0.5"）。
+ * 來源：建置時的 VUE_APP_WEB_CHAT_ALLOWED_HOSTS；不在程式碼中寫死任何私有 IP 或網域。
+ */
+export function parseAllowedHosts(value = '') {
+  return String(value || '')
+    .split(/[\s,]+/)
+    .map(host => host.trim().toLowerCase())
+    .filter(Boolean)
+}
 
-export function isAllowedWebChatOrigin(origin) {
+/**
+ * 只允許標準形式的 HTTPS origin；若有設定允許主機清單，主機名稱必須在清單中。
+ * 未設定清單時接受任何 HTTPS origin（由反向代理決定可達性）。
+ */
+export function isAllowedWebChatOrigin(origin, allowedHosts = []) {
   try {
     const url = new URL(origin)
-    return url.protocol === 'https:' && WEB_CHAT_ALLOWED_HOSTS.has(url.hostname.toLowerCase())
+    if (url.protocol !== 'https:' || url.origin !== origin) return false
+    const hosts = Array.isArray(allowedHosts) ? allowedHosts : parseAllowedHosts(allowedHosts)
+    return hosts.length === 0 || hosts.includes(url.hostname.toLowerCase())
   } catch (_) {
     return false
   }

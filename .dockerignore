@@ -10,3 +10,17 @@ data/
 main/xiaozhi-server/models/
 main/xiaozhi-server/mysql/
 main/xiaozhi-server/uploadfile/
+
+# 注意：.dockerignore 的樣式以建置 context 根目錄為基準，"data/"、".env" 只會排除根目錄。
+# 以下明確排除子目錄中的部署資料與密鑰，避免被 COPY 進映像。
+main/xiaozhi-server/data/
+main/xiaozhi-server/tmp/
+main/xiaozhi-server/.venv/
+**/.env
+**/.env.*
+!main/manager-web/.env
+!main/manager-web/.env.production
+!main/manager-web/.env.development
+**/.config.yaml
+**/*.pem
+**/*.key

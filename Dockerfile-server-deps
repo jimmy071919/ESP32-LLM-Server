@@ -1,8 +1,25 @@
-FROM ghcr.nju.edu.cn/xinnan-tech/xiaozhi-esp32-server@sha256:98546170645f8119814f1e9b50cd00dec92fb0ff169e4b3bd04ac14482412869
+# 執行映像：上游映像（系統套件 + 內建模型）作為基底，安裝本倉庫鎖定的依賴，並覆蓋為本倉庫原始碼。
+#
+# 供應鏈：
+# - 基底改由官方登錄 ghcr.io 取得，不再經過中國境內的 ghcr 代理鏡像站（該代理與 ghcr.io 的
+#   manifest digest 相同，因此固定 digest 後內容不變）。
+# - Python 套件只從 pypi.org 與 download.pytorch.org 安裝，版本由 requirements.txt 鎖定，最後執行 pip check。
+# - 原始碼以 COPY 打包進映像，不再依賴 docker-compose 逐檔掛載覆寫；新增的模組（Open-Meteo 天氣、
+#   RSS 新聞、IP 定位等）因此能在容器中生效。部署資料與密鑰由 .dockerignore 排除。
+ARG BASE_IMAGE=ghcr.io/xinnan-tech/xiaozhi-esp32-server@sha256:98546170645f8119814f1e9b50cd00dec92fb0ff169e4b3bd04ac14482412869
+FROM ${BASE_IMAGE}
 
 RUN python -m pip install --no-cache-dir --disable-pip-version-check pip==26.2.2 setuptools==84.1.0
-RUN python -m pip install --no-cache-dir --disable-pip-version-check --extra-index-url https://download.pytorch.org/whl/cpu torch==2.11.0+cpu torchaudio==2.11.0+cpu
+RUN python -m pip install --no-cache-dir --disable-pip-version-check --index-url https://pypi.org/simple --extra-index-url https://download.pytorch.org/whl/cpu torch==2.11.0+cpu torchaudio==2.11.0+cpu
 
 COPY main/xiaozhi-server/requirements.txt /tmp/requirements.txt
 RUN python -m pip install --no-cache-dir --disable-pip-version-check --index-url https://pypi.org/simple -r /tmp/requirements.txt \
     && python -m pip check
+
+WORKDIR /opt/xiaozhi-esp32-server
+COPY main/xiaozhi-server/ /opt/xiaozhi-esp32-server/
+
+# 建置時記錄來源版本，方便稽核：docker inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}'
+ARG GIT_SHA=unknown
+LABEL org.opencontainers.image.source="https://github.com/jimmy071919/xiaozhi-server-sv" \
+      org.opencontainers.image.revision="${GIT_SHA}"

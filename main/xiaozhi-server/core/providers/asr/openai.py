@@ -1,5 +1,6 @@
 import time
 import os
+import asyncio
 from config.logger import setup_logging
 from typing import Optional, Tuple, List
 from core.providers.asr.dto.dto import InterfaceType
@@ -18,6 +19,14 @@ class ASRProvider(ASRProviderBase):
         self.model = config.get("model_name")        
         self.output_dir = config.get("output_dir")
         self.delete_audio_file = delete_audio_file
+        # 可選：指定語言（ISO-639-1，例如 zh、en）與提示詞。
+        # Whisper 的 prompt 可引導輸出用字，例如以繁體中文提示詞讓轉寫偏向繁體。
+        self.language = (config.get("language") or "").strip()
+        self.prompt = (config.get("prompt") or "").strip()
+        try:
+            self.timeout = float(config.get("timeout") or 30)
+        except (TypeError, ValueError):
+            self.timeout = 30.0
 
         os.makedirs(self.output_dir, exist_ok=True)
 
@@ -40,23 +49,27 @@ class ASRProvider(ASRProviderBase):
             data = {
                 "model": self.model
             }
+            if self.language:
+                data["language"] = self.language
+            if self.prompt:
+                data["prompt"] = self.prompt
 
+            def _post():
+                with open(file_path, "rb") as audio_file:  # 使用with语句确保文件关闭
+                    return requests.post(
+                        self.api_url,
+                        files={"file": audio_file},
+                        data=data,
+                        headers=headers,
+                        timeout=self.timeout,
+                    )
 
-            with open(file_path, "rb") as audio_file:  # 使用with语句确保文件关闭
-                files = {
-                    "file": audio_file
-                }
-
-                start_time = time.time()
-                response = requests.post(
-                    self.api_url,
-                    files=files,
-                    data=data,
-                    headers=headers
-                )
-                logger.bind(tag=TAG).debug(
-                    f"语音识别耗时: {time.time() - start_time:.3f}s | 结果: {response.text}"
-                )
+            start_time = time.time()
+            # 在執行緒中送出，避免阻塞 WebSocket 事件迴圈
+            response = await asyncio.to_thread(_post)
+            logger.bind(tag=TAG).debug(
+                f"语音识别耗时: {time.time() - start_time:.3f}s | status: {response.status_code}"
+            )
 
             if response.status_code == 200:
                 text = response.json().get("text", "")

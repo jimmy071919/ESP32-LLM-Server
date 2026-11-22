@@ -51,9 +51,6 @@ CHANNEL_MAP = {
     "虫部落": "chongbuluo-latest",
 }
 
-# 默认新闻来源字典，当配置中没有指定时使用
-DEFAULT_NEWS_SOURCES = "澎湃新闻;百度热搜;财联社"
-
 def _get_newsnow_config(conn):
     # 从连接配置获取
     plugins = conn.config.get("plugins", {})
@@ -72,16 +69,13 @@ def get_news_sources_from_config(conn):
             logger.bind(tag=TAG).debug(f"使用配置的新闻源: {result}")
             return result
 
-        logger.bind(tag=TAG).debug("未找到新闻源配置，使用默认配置")
-        return DEFAULT_NEWS_SOURCES
+        logger.bind(tag=TAG).debug("未找到新闻源配置")
+        return ""
 
     except Exception as e:
-        logger.bind(tag=TAG).error(f"获取新闻源配置失败: {e}，使用默认配置")
-        return DEFAULT_NEWS_SOURCES
+        logger.bind(tag=TAG).error(f"获取新闻源配置失败: {e}")
+        return ""
 
-
-# 从默认配置获取可用的新闻源名称（运行时由get_news_sources_from_config动态获取）
-example_sources_str = DEFAULT_NEWS_SOURCES.replace(";","、")
 
 GET_NEWS_FROM_NEWSNOW_FUNCTION_DESC = {
     "type": "function",
@@ -93,7 +87,7 @@ GET_NEWS_FROM_NEWSNOW_FUNCTION_DESC = {
             "properties": {
                 "source": {
                     "type": "string",
-                    "description": f"新闻源的标准中文名称，例如{example_sources_str}等。可选参数，如果不提供则使用默认新闻源",
+                    "description": "配置的新闻源名称。可选，不提供则使用配置中的第一个新闻源",
                 },
                 "detail": {
                     "type": "boolean",
@@ -110,14 +104,15 @@ GET_NEWS_FROM_NEWSNOW_FUNCTION_DESC = {
 }
 
 
-async def fetch_news_from_api(conn: "ConnectionHandler", source="thepaper"):
+async def fetch_news_from_api(conn: "ConnectionHandler", source):
     """从API获取新闻列表"""
     try:
-        api_url = f"https://newsnow.busiyi.world/api/s?id={source}"
-
         news_config = conn.config.get("plugins", {}).get("get_news_from_newsnow", {})
-        if news_config.get("url"):
-            api_url = news_config["url"] + source
+        api_url = news_config.get("url")
+        if not api_url:
+            logger.bind(tag=TAG).error("新闻 API 地址未配置")
+            return []
+        api_url += source
 
         headers = {"User-Agent": "Mozilla/5.0"}
         async with httpx.AsyncClient(timeout=httpx.Timeout(10.0, connect=3.0)) as client:
@@ -175,7 +170,7 @@ async def fetch_news_detail(url):
 )
 async def get_news_from_newsnow(
     conn: "ConnectionHandler",
-    source: str = "澎湃新闻",
+    source: str | None = None,
     detail: bool = False,
     lang: str = "zh_CN",
 ):
@@ -200,8 +195,6 @@ async def get_news_from_newsnow(
 
             url = conn.last_newsnow_link.get("url")
             title = conn.last_newsnow_link.get("title", "未知标题")
-            source_id = conn.last_newsnow_link.get("source_id", "thepaper")
-            source_name = CHANNEL_MAP.get(source_id, "未知来源")
 
             if not url or url == "#":
                 return ActionResponse(
@@ -209,7 +202,7 @@ async def get_news_from_newsnow(
                 )
 
             logger.bind(tag=TAG).debug(
-                f"获取新闻详情: {title}, 来源: {source_name}, URL={url}"
+                f"获取新闻详情: {title}, URL={url}"
             )
 
             # 获取新闻详情
@@ -226,7 +219,7 @@ async def get_news_from_newsnow(
             detail_report = (
                 f"根据下列数据，用{lang}回应用户的新闻详情查询请求：\n\n"
                 f"新闻标题: {title}\n"
-                # f"新闻来源: {source_name}\n"
+
                 f"详细内容: {detail_content}\n\n"
                 f"(请对上述新闻内容进行总结，提取关键信息，以自然、流畅的方式向用户播报，"
                 f"不要提及这是总结，就像是在讲述一个完整的新闻)"
@@ -242,15 +235,17 @@ async def get_news_from_newsnow(
         news_sources_list = [
             name.strip() for name in news_sources.split(";") if name.strip()
         ]
+        if not conn.config.get("plugins", {}).get("get_news_from_newsnow", {}).get("url") or not news_sources_list:
+            return ActionResponse(Action.REQLLM, "新闻服务未配置 API 地址或新闻源。", None)
+        if not source:
+            source = news_sources_list[0]
         if source in news_sources_list:
             # 如果输入的中文名称在配置的新闻源中，在 CHANNEL_MAP 中查找对应的英文ID
             english_source_id = CHANNEL_MAP.get(source)
 
-        # 如果找不到对应的英文ID，使用默认源
+        # 未配置或未知的来源不能悄悄落到其他新闻云服务
         if not english_source_id:
-            logger.bind(tag=TAG).warning(f"无效的新闻源: {source}，使用默认源澎湃新闻")
-            english_source_id = "thepaper"
-            source = "澎湃新闻"
+            return ActionResponse(Action.REQLLM, f"新闻源 {source} 未配置或不受支持。", None)
 
         logger.bind(tag=TAG).info(f"获取新闻: 新闻源={source}({english_source_id})")
 

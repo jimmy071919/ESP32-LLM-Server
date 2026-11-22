@@ -203,9 +203,7 @@ async def get_news_from_chinanews(
         # 否则，获取新闻列表并随机选择一条
         # 从配置中获取RSS URL
         rss_config = conn.config.get("plugins", {}).get("get_news_from_chinanews", {})
-        default_rss_url = rss_config.get(
-            "default_rss_url", "https://www.chinanews.com.cn/rss/society.xml"
-        )
+        default_rss_url = rss_config.get("default_rss_url")
 
         # 将用户输入的类别映射到配置中的类别键
         mapped_category = map_category(category)
@@ -214,6 +212,8 @@ async def get_news_from_chinanews(
         rss_url = default_rss_url
         if mapped_category and mapped_category in rss_config:
             rss_url = rss_config[mapped_category]
+        if not rss_url:
+            return ActionResponse(Action.REQLLM, "新闻 RSS 地址未配置，请配置新闻源。", None)
 
         logger.bind(tag=TAG).info(
             f"获取新闻: 原始类别={category}, 映射类别={mapped_category}, URL={rss_url}"

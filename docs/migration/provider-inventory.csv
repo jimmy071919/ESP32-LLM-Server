@@ -1,0 +1,30 @@
+model_or_tool_id,type,class,after_202611221800,replacement
+LLM_OpenAIOfficial,LLM,non-CN cloud,new; default when previous default was CN,
+VLLM_OpenAIVision,VLLM,non-CN cloud,new; default when previous default was CN,
+VLLM_GeminiVision,VLLM,non-CN cloud,new; enabled,
+ASR_GroqASR,ASR,non-CN cloud,enabled; default when previous default was CN; prompt/timeout added,
+ASR_OpenaiASR,ASR,non-CN cloud,enabled,
+LLM_GeminiLLM,LLM,non-CN cloud,enabled,
+TTS_EdgeTTS,TTS,non-CN cloud (unofficial endpoint),kept as default,Azure Speech / OpenAI TTS for production
+TTS_OpenAITTS,TTS,non-CN cloud,enabled,
+LLM_OllamaLLM / LLM_LMStudioLLM / LLM_XinferenceLLM,LLM,self-hosted,unchanged,use non-CN model weights (Llama / Gemma / Mistral)
+LLM_ChatGLMLLM,LLM,A (CN cloud),disabled unless referenced,LLM_OpenAIOfficial
+LLM_AliLLM / LLM_AliAppLLM,LLM,A (CN cloud),disabled unless referenced,LLM_OpenAIOfficial / LLM_GeminiLLM
+LLM_DoubaoLLM / LLM_VolcesAiGatewayLLM,LLM,A (CN cloud),disabled unless referenced,LLM_OpenAIOfficial / LLM_GeminiLLM
+LLM_DeepSeekLLM,LLM,A (CN cloud),disabled unless referenced,LLM_OpenAIOfficial / LLM_GeminiLLM
+LLM_CozeLLM,LLM,A (CN cloud),disabled unless referenced,non-CN LLM + MCP
+LLM_XunfeiSparkLLM,LLM,A (CN cloud),disabled unless referenced,LLM_OpenAIOfficial
+VLLM_ChatGLMVLLM / VLLM_QwenVLVLLM,VLLM,A (CN cloud),disabled unless referenced,VLLM_OpenAIVision / VLLM_GeminiVision
+ASR_FunASR / ASR_FunASRServer / ASR_SherpaASR,ASR,B (CN-origin local model),disabled unless referenced,ASR_GroqASR / ASR_OpenaiASR / self-hosted Whisper
+ASR_Doubao* / ASR_Tencent / ASR_Aliyun* / ASR_Baidu / ASR_XunfeiStream / ASR_Qwen3Flash,ASR,A (CN cloud),disabled unless referenced,ASR_GroqASR / ASR_OpenaiASR
+TTS_Doubao / TTS_Huoshan* / TTS_HSDSTTS_V2 / TTS_VolcesAiGatewayTTS,TTS,A (CN cloud),disabled unless referenced,TTS_EdgeTTS / TTS_OpenAITTS
+TTS_CosyVoiceSiliconflow / TTS_CozeCnTTS / TTS_Minimax* / TTS_Aliyun* / TTS_AliBLStreamTTS / TTS_TencentTTS / TTS_XunFeiStreamTTS,TTS,A (CN cloud),disabled unless referenced,TTS_EdgeTTS / TTS_OpenAITTS
+TTS_GizwitsTTS / TTS_LinkeraiTTS / TTS_ACGNTTS / TTS_TTS302AI,TTS,A (CN cloud),disabled unless referenced,TTS_EdgeTTS / TTS_OpenAITTS
+TTS_PaddleSpeechTTS / TTS_IndexStreamTTS / TTS_FishSpeech / TTS_GPT_SOVITS_V2 / TTS_GPT_SOVITS_V3,TTS,B (CN-origin local model),disabled unless referenced,Piper or other reviewed self-hosted TTS
+Intent_intent_llm / Memory_mem_local_short (helper llm),Intent/Memory,config,repointed to LLM_OpenAIOfficial only if it pointed to a CN LLM without API key,
+get_weather (SYSTEM_PLUGIN_WEATHER),Plugin,tool,QWeather → Open-Meteo; api_host/api_key removed; default_location 广州 cleared,
+get_news_rss (SYSTEM_PLUGIN_NEWS_RSS),Plugin,tool,new; replaces newsnow / chinanews mappings,
+get_news_from_newsnow (SYSTEM_PLUGIN_NEWS_NEWSNOW),Plugin,C (CN content),mappings migrated; provider row deleted when unreferenced,get_news_rss
+get_news_from_chinanews (SYSTEM_PLUGIN_NEWS_CHINANEWS),Plugin,A (CN service),mappings migrated; provider row deleted when unreferenced,get_news_rss
+web_search (SYSTEM_PLUGIN_WEB_SEARCH),Plugin,tool,metaso removed; mappings using metaso → tavily (key cleared),
+geolocation (sys_params geolocation.*),system,tool,new; provider=none,

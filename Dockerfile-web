@@ -4,6 +4,9 @@ WORKDIR /app
 COPY main/manager-web/package*.json ./
 RUN npm install
 COPY main/manager-web .
+# 部署時以 --build-arg 指定工作台允許的主機，避免在程式碼寫死私有 IP／網域
+ARG VUE_APP_WEB_CHAT_ALLOWED_HOSTS=
+ENV VUE_APP_WEB_CHAT_ALLOWED_HOSTS=${VUE_APP_WEB_CHAT_ALLOWED_HOSTS}
 RUN npm run build
 
 # 第二阶段：构建Java后端

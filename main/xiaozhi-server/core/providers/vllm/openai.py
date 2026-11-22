@@ -34,13 +34,19 @@ class VLLMProvider(VLLMProviderBase):
             except (ValueError, TypeError):
                 setattr(self, param, default)
 
+        # 回覆語言提示可由設定覆寫；預設跟隨提問語言，不強制簡體中文
+        self.reply_language_hint = config.get(
+            "reply_language_hint", "（請使用與提問相同的語言回覆）"
+        )
+
         model_key_msg = check_model_key("VLLM", self.api_key)
         if model_key_msg:
             logger.bind(tag=TAG).error(model_key_msg)
         self.client = openai.OpenAI(api_key=self.api_key, base_url=self.base_url)
 
     def response(self, question, base64_image):
-        question = question + "(请使用中文回复)"
+        if self.reply_language_hint:
+            question = question + self.reply_language_hint
         try:
             messages = [
                 {

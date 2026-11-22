@@ -1,4 +1,4 @@
-.PHONY: test test-fast test-python test-java test-web help
+.PHONY: test test-fast test-python test-java test-web audit-non-cn help
 
 help:
 	@echo "make test-fast   - run all fast unit tests (default)"
@@ -6,6 +6,7 @@ help:
 	@echo "make test-python - pytest in main/xiaozhi-server"
 	@echo "make test-java   - mvn test in main/manager-api"
 	@echo "make test-web    - npm run test:unit in main/manager-web"
+	@echo "make audit-non-cn - static non-China policy gate (add ARGS=--inventory for a full listing)"
 
 test: test-fast
 
@@ -19,3 +20,6 @@ test-java:
 
 test-web:
 	cd main/manager-web && npm ci --no-audit --no-fund && npm test
+
+audit-non-cn:
+	./scripts/non-cn-audit.sh $(ARGS)

@@ -84,6 +84,7 @@ tts_audio_send_delay: 0
 exit_commands:
   - "退出"
   - "关闭"
+  - "關閉"
 
 xiaozhi:
   type: hello
@@ -104,18 +105,12 @@ module_test:
     - "请用100字概括量子计算的基本原理和应用前景"
 
 # 唤醒词，用于识别唤醒词还是讲话内容
+# 只保留本產品自己的喚醒詞；不要放入其他廠商品牌（例如小愛同學、小冰）。
+# 修改時須同步調整 ESP32 韌體的喚醒模型，否則只改一端無效。
 wakeup_words:
   - "你好小智"
-  - "嘿你好呀"
   - "你好小志"
-  - "小爱同学"
-  - "你好小鑫"
-  - "你好小新"
-  - "小美同学"
-  - "小龙小龙"
-  - "喵喵同学"
-  - "小滨小滨"
-  - "小冰小冰"
+  - "嘿你好呀"
 # MCP接入点地址，地址格式为：ws://你的mcp接入点ip或者域名:端口号/mcp/?token=你的token
 # 详细教程 https://github.com/xinnan-tech/xiaozhi-esp32-server/blob/main/docs/mcp-endpoint-integration.md
 mcp_endpoint: 你的接入点 websocket地址
@@ -128,31 +123,43 @@ context_providers:
     headers:
       Authorization: ""
 
+# IP 粗略定位（用於系統提示詞中的「裝置位置」與在地天氣）
+# 預設關閉：不把使用者 IP 送到任何第三方。裝置若提供 self_location_get MCP 工具會優先使用。
+# provider: none（預設）/ ipinfo（需 token，https://ipinfo.io）/ ipwhois（https://ipwho.is，免費版限非商業）
+geolocation:
+  provider: none
+  api_key: ""
+  timeout: 3
+  # 裝置與伺服器在同一區網（私有 IP）時，是否以伺服器出口 IP 估計位置
+  lookup_private_ip_as_server: false
+
 # 插件的基础配置
 plugins:
-  # 获取天气插件的配置，这里填写你的api_key
-  # 这个密钥是项目共用的key，用多了可能会被限制
-  # 想稳定一点就自行申请替换，每天有1000次免费调用
-  # 申请地址：https://console.qweather.com/#/apps/create-key/over
-  # 申请后通过这个链接可以找到自己的apihost：https://console.qweather.com/setting?lang=zh
+  # 天氣：Open-Meteo（https://open-meteo.com）。免費 API 僅限非商業使用；商用請填 api_key。
+  # 位置未設定時會請模型詢問使用者，不猜測城市。完整後台模式請改 Manager API 外掛設定。
   get_weather:
-    api_host: "mj7p3y7naa.re.qweatherapi.com"
-    api_key: "a861d0d5e7bf4ee1a83d9a9e4f96d4da"
-    default_location: "广州"
-  # 获取新闻插件的配置，这里根据需要的新闻类型传入对应的url链接，默认支持社会、科技、财经新闻
-  # 更多类型的新闻列表查看 https://www.chinanews.com.cn/rss/
-  get_news_from_chinanews:
-    default_rss_url: "https://www.chinanews.com.cn/rss/society.xml"
-    society_rss_url: "https://www.chinanews.com.cn/rss/society.xml"
-    world_rss_url: "https://www.chinanews.com.cn/rss/world.xml"
-    finance_rss_url: "https://www.chinanews.com.cn/rss/finance.xml"
-  get_news_from_newsnow:
-    url: "https://newsnow.busiyi.world/api/s?id="
-    news_sources: "澎湃新闻;百度热搜;财联社"
+    provider: openmeteo
+    default_location: ""   # 例如 "Taipei"
+    country_code: ""       # 可選，ISO 國碼（例如 TW），同名地點時優先此國家
+    api_key: ""            # Open-Meteo 商用 API key，可留空
+    timeout: 8
+    forecast_days: 7
+  # 新聞：RSS 白名單（get_news_rss）。格式：名稱|https 網址|語言|主題（逗號分隔）
+  # 上線前請逐一確認各來源 RSS 的使用條款；本工具只回傳標題、摘要與原文連結。
+  get_news_rss:
+    feeds: |
+      BBC 中文|https://feeds.bbci.co.uk/zhongwen/trad/rss.xml|zh|world
+      DW 中文|https://rss.dw.com/rdf/rss-chi-all|zh|world
+      BBC World|https://feeds.bbci.co.uk/news/world/rss.xml|en|world
+      NPR News|https://feeds.npr.org/1001/rss.xml|en|world
+    max_items: 5
+    max_age_hours: 72
+    timeout: 8
   home_assistant:
+    # 格式：位置,設備名稱,entity_id；請改成你 Home Assistant 中實際存在的實體
     devices:
-      - 客厅,玩具灯,switch.cuco_cn_460494544_cp1_on_p_2_1
-      - 卧室,台灯,switch.iot_cn_831898993_socn1_on_p_2_1
+      - 客廳,檯燈,switch.living_room_lamp
+      - 臥室,床頭燈,light.bedroom
     base_url: http://homeassistant.local:8123
     api_key: 你的home assistant api访问令牌
   play_music:
@@ -171,20 +178,18 @@ plugins:
     api_key: "ragflow-xxx"
     # ragflow知识库id
     dataset_ids: ["123456789"]
-  # 联网搜索插件配置
-  # 支持秘塔(metaso)、Tavily和Serply三个搜索源
-  # 秘塔API Key申请：https://metaso.cn/search-api/api-keys
+  # 联网搜索插件配置：只允許 tavily / serply（未知值會直接拒絕，不會回退）
   # Tavily API Key申请：https://app.tavily.com/home
   # Serply API Key申请：https://serply.io
   web_search:
-    # 搜索源：metaso / tavily / serply
-    provider: "metaso"
+    # 搜索源：tavily / serply
+    provider: "tavily"
     # 工具描述，用于告知LLM何时调用此工具，可根据需要自定义
     description: "联网搜索工具。当用户明确需要联网搜索问题时使用此工具。"
     # 返回结果数量（默认5）
     max_results: 5
-    # 秘塔API Key（mk-前缀） / Tavily API Key（tvly-前缀） / Serply API Key
-    api_key: "mk-xxx"
+    # Tavily API Key（tvly-前缀） / Serply API Key；請由 data/.config.yaml 或秘密管理注入
+    api_key: ""
 # 声纹识别配置
 voiceprint:
   # 声纹接口地址
@@ -210,25 +215,25 @@ prompt: |
 prompt_template: agent-base-prompt.txt
 
 # 系统错误时的回复
-system_error_response: "主人，小智现在有点忙，我们稍后再试吧。"
+system_error_response: "抱歉，我現在有點忙，我們稍後再試一次好嗎？"
 
 # 结束语prompt
 end_prompt:
   enable: true # 是否开启结束语
   # 结束语
   prompt: |
-    请你以"时间过得真快"未来头，用富有感情、依依不舍的话来结束这场对话吧！
+    請用溫暖、簡短、帶點不捨的語氣結束這次對話，使用與對話相同的語言。
 
 # 具体处理时选择的模块(The module selected for specific processing)
 selected_module:
   # 语音活动检测模块，默认使用SileroVAD模型
   VAD: SileroVAD
-  # 语音识别模块，默认使用FunASR本地模型
-  ASR: FunASR
-  # 将根据配置名称对应的type调用实际的LLM适配器
-  LLM: ChatGLMLLM
-  # 视觉语言大模型
-  VLLM: ChatGLMVLLM
+  # 語音識別：預設 Groq Whisper（雲端，需 API key）；可改 OpenaiASR，或自架 Whisper
+  ASR: GroqASR
+  # 将根据配置名称对应的type调用实际的LLM适配器；預設 OpenAI 官方 API（可改 GeminiLLM / OllamaLLM）
+  LLM: OpenAILLM
+  # 视觉语言大模型；預設 OpenAI 官方 API（可改 GeminiVLLM）
+  VLLM: OpenAIVLLM
   # TTS将根据配置名称对应的type调用实际的TTS适配器
   TTS: EdgeTTS
   # 记忆模块，默认不开启记忆；如果想使用超长记忆，推荐使用mem0ai；如果注重隐私，请使用本地的mem_local_short
@@ -237,7 +242,7 @@ selected_module:
   # 不想开通意图识别，就设置成：nointent
   # 意图识别可使用intent_llm。优点：通用性强，缺点：增加串行前置意图识别模块，会增加处理时间，支持控制音量大小等iot操作
   # 意图识别可使用function_call，缺点：需要所选择的LLM支持function_call，优点：按需调用工具、速度快，理论上能全部操作所有iot指令
-  # 默认免费的ChatGLMLLM就已经支持function_call，但是如果像追求稳定建议把LLM设置成：DoubaoLLM，使用的具体model_name是：doubao-seed-2-0-lite-260215
+  # OpenAI、Gemini 等主流模型都支援 function_call
   Intent: function_call
 
 # 意图识别，是用于理解用户意图的模块，例如：播放音乐
@@ -251,15 +256,15 @@ Intent:
     type: intent_llm
     # 配备意图识别独立的思考模型
     # 如果这里不填，则会默认使用selected_module.LLM的模型作为意图识别的思考模型
-    # 如果你的不想使用selected_module.LLM意图识别，这里最好使用独立的LLM作为意图识别，例如使用免费的ChatGLMLLM
-    llm: ChatGLMLLM
+    # 如果你的不想使用selected_module.LLM意图识别，这里最好使用独立的轻量LLM作为意图识别
+    llm: OpenAILLM
     # plugins_func/functions下的模块，可以通过配置，选择加载哪个模块，加载后对话支持相应的function调用
     # 系统默认已经记载"handle_exit_intent(退出识别)"、"play_music(音乐播放)"插件，请勿重复加载
     # 下面是加载查天气、角色切换、加载查新闻的插件示例
     functions:
       - web_search
       - get_weather
-      - get_news_from_newsnow
+      - get_news_rss
       - play_music
   function_call:
     # 不需要动type
@@ -272,8 +277,7 @@ Intent:
       - web_search                  # 联网搜索
       - get_weather
       # - search_from_ragflow
-      # - get_news_from_chinanews
-      - get_news_from_newsnow
+      - get_news_rss               # RSS 新聞（來源見 plugins.get_news_rss）
       # play_music是服务器自带的音乐播放，hass_play_music是通过home assistant控制的独立外部程序音乐播放
       # 如果用了hass_play_music，就不要开启play_music，两者只留一个
       - play_music
@@ -289,7 +293,7 @@ Memory:
   powermem:
     # PowerMem是OceanBase开源的agent记忆组件，通过本地LLM进行记忆总结
     # 费用说明：PowerMem本身免费，实际费用取决于所选LLM和数据库
-    # - 使用sqlite + 免费LLM(如glm-4-flash) = 完全免费
+    # - 使用sqlite + 本機 LLM（如 Ollama） = 不需雲端費用
     # - 使用云端LLM或云端数据库 = 按对应服务收费
     # GitHub: https://github.com/oceanbase/powermem
     # 官网: https://www.powermem.ai/
@@ -301,22 +305,21 @@ Memory:
     # 用户画像功能支持: oceanbase、seekdb、sqlite (powermem 0.3.0+)
     enable_user_profile: true
     # ========== LLM 配置 ==========
-    # 通义千问: https://bailian.console.aliyun.com/?apiKey=1#/api-key
-    # 智谱AI(免费): https://bigmodel.cn/usercenter/proj-mgmt/apikeys
+    # OpenAI: https://platform.openai.com/api-keys
     llm:
-      provider: openai  # 可选: qwen, openai, zhipu 等
+      provider: openai
       config:
         api_key: 你的LLM API密钥
-        model: qwen-plus
-        # openai_base_url: https://api.openai.com/v1  # 可选，自定义服务地址
+        model: gpt-4o-mini
+        # openai_base_url: https://api.openai.com/v1  # 可选，自定义服务地址（如本機 Ollama 的 OpenAI 相容端點）
     # ========== Embedding 配置 ==========
     embedder:
-      provider: openai  # 可选: qwen, openai 等
+      provider: openai
       config:
         api_key: 你的嵌入模型API密钥
-        model: text-embedding-v4
-        openai_base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
-        # embedding_dims: 1024  # 向量维度，非1536时需配置
+        model: text-embedding-3-small
+        openai_base_url: https://api.openai.com/v1
+        # embedding_dims: 1536  # 向量维度，非1536时需配置（自架 Nomic Embed 等請依模型設定）
 
     # ========== Database 配置 ==========
     # oceanbase(推荐,最佳性能), seekdb(推荐,AI应用存储一体), postgres, sqlite(轻量备选)
@@ -342,9 +345,11 @@ Memory:
     type: mem_local_short
     # 配备记忆存储独立的思考模型
     # 如果这里不填，则会默认使用selected_module.LLM的模型作为意图识别的思考模型
-    # 如果你的不想使用selected_module.LLM记忆存储，这里最好使用独立的LLM作为意图识别，例如使用免费的ChatGLMLLM
-    llm: ChatGLMLLM
+    # 如果你的不想使用selected_module.LLM记忆存储，这里最好使用独立的轻量LLM
+    llm: OpenAILLM
 
+# 非中國化部署（S2）建議：GroqASR / OpenaiASR，或自架 Whisper。
+# FunASR / FunASRServer / SherpaASR(SenseVoice) 為中國來源模型；Doubao / Tencent / Aliyun / Baidu / Xunfei / Qwen 為中國雲端服務。
 ASR:
   FunASR:
     type: fun_local
@@ -515,6 +520,11 @@ ASR:
     base_url: https://api.groq.com/openai/v1/audio/transcriptions
     model_name: whisper-large-v3-turbo
     output_dir: tmp/
+    # 可選：固定語言（zh / en / ja…），留空則自動偵測
+    language: ""
+    # 可選：以繁體中文提示詞引導 Whisper 輸出繁體字；多語環境可留空
+    prompt: "以下是繁體中文的語音內容。"
+    timeout: 30
   VoskASR:
     # 官方网站：https://alphacephei.com/vosk/
     # 配置说明：
@@ -601,8 +611,19 @@ VAD:
     min_silence_duration_ms: 200  # 如果说话停顿比较长，可以把这个值设置大一些
 
 LLM:
-  # 所有openai类型均可以修改超参，以AliLLM为例
+  # 所有openai类型均可以修改超参
   # 当前支持的type为openai、dify、ollama，可自行适配
+  # ---- 非中國服務（建議） ----
+  OpenAILLM:
+    # OpenAI 官方 API：https://platform.openai.com/api-keys
+    type: openai
+    base_url: https://api.openai.com/v1
+    model_name: gpt-4o-mini   # 請改為實測過、支援 function calling 的模型
+    api_key: 你的OpenAI API密钥
+    temperature: 0.7
+    max_tokens: 500
+  # ---- 以下為上游保留的中國雲端服務範例（AliLLM / DoubaoLLM / DeepSeekLLM / ChatGLMLLM / CozeLLM /
+  #      VolcesAiGatewayLLM / XunfeiSparkLLM）：非中國化部署請勿選用 ----
   AliLLM:
     # 定义LLM API类型
     type: openai
@@ -654,7 +675,7 @@ LLM:
   OllamaLLM:
     # 定义LLM API类型
     type: ollama
-    model_name: qwen2.5 #  使用的模型名称，需要预先使用ollama pull下载
+    model_name: llama3.2 #  使用的模型名称，需要预先使用ollama pull下载（例如 llama3.2、gemma3）
     base_url: http://localhost:11434  # Ollama服务地址
   DifyLLM:
     # 定义LLM API类型
@@ -734,6 +755,19 @@ LLM:
     base_url: http://localhost:9997  # Xinference服务地址
 # VLLM配置（视觉语言大模型）
 VLLM:
+  OpenAIVLLM:
+    # OpenAI 官方視覺模型
+    type: openai
+    url: https://api.openai.com/v1
+    model_name: gpt-4o-mini   # 請改為實測過、支援影像輸入的模型
+    api_key: 你的OpenAI API密钥
+  GeminiVLLM:
+    # Google Gemini 的 OpenAI 相容端點：https://ai.google.dev/gemini-api/docs/openai
+    type: openai
+    url: https://generativelanguage.googleapis.com/v1beta/openai/
+    model_name: gemini-2.0-flash
+    api_key: 你的Gemini API密钥
+  # 以下 ChatGLMVLLM / QwenVLVLLM 為中國雲端服務範例，非中國化部署請勿選用
   ChatGLMVLLM:
     type: openai
     # glm-4v-flash是智谱免费AI的视觉模型，需要先在智谱AI平台创建API密钥并获取api_key
@@ -757,6 +791,8 @@ VLLM:
     base_url: https://ark.cn-beijing.volces.com/api/v3
     model_name: lite
     api_key: 你的api_password
+# 非中國化部署（S2）建議：EdgeTTS（開發／個人）、OpenAITTS 或 Azure Speech（正式）。
+# Doubao / Huoshan / Volces / CosyVoiceSiliconflow / CozeCn / Minimax / Aliyun / AliBL / Tencent / XunFei 為中國雲端服務。
 TTS:
   # 当前支持的type为edge、doubao，可自行适配
   EdgeTTS:
