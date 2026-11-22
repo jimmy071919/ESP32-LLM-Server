@@ -5,7 +5,7 @@
 services:
   # Server模块
   xiaozhi-esp32-server:
-    image: xiaozhi-server-sv:device-speak-20261123
+    image: xiaozhi-server-sv:no-device-speak-20261123
     build:
       context: ../..
       dockerfile: Dockerfile-server-deps
@@ -37,7 +37,7 @@ services:
 
   # manager-api和manager-web模块
   xiaozhi-esp32-server-web:
-    image: xiaozhi-server-sv-web:text-chat-button-20261123
+    image: xiaozhi-server-sv-web:no-device-speak-20261123
     build:
       context: ../..
       dockerfile: Dockerfile-web

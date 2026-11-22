@@ -1,4 +1,3 @@
-import json
 import time
 import uuid
 import asyncio
@@ -110,39 +109,8 @@ class ListenTextMessageHandler(TextMessageHandler):
                     enqueue_asr_report(conn, "嘿，你好呀", [])
                     await startToChat(conn, "嘿，你好呀")
                 else:
-                    # 工作台要求由實體裝置說出 AI 的回答
-                    if conn.web_chat_mode and msg_json.get("speak_on_device"):
-                        if await route_text_to_device(conn, original_text):
-                            return
                     conn.just_woken_up = True
                     # 上报纯文字数据（复用ASR上报功能，但不提供音频数据）
                     enqueue_asr_report(conn, original_text, [])
                     # 否则需要LLM对文字内容进行答复
                     await startToChat(conn, original_text)
-
-
-async def route_text_to_device(conn: "ConnectionHandler", text: str) -> bool:
-    """把工作台輸入的文字交給同一台實體裝置的連線處理，讓裝置播出 AI 的回答。
-
-    回覆文字（tts sentence_start／stop）會同步回工作台。裝置未連線或尚未初始化完成時回傳 False，
-    並通知工作台改為只顯示文字。
-    """
-    server = getattr(conn, "server", None)
-    finder = getattr(server, "find_device_connection", None)
-    device_conn = finder(conn.device_id, exclude=conn) if finder else None
-    if device_conn is None or device_conn.tts is None or device_conn.llm is None:
-        await conn.websocket.send(
-            json.dumps({"type": "web_chat", "state": "device_offline", "session_id": conn.session_id})
-        )
-        return False
-
-    device_conn.mirror_connections.add(conn)
-    device_conn.last_activity_time = time.time() * 1000
-    device_conn.just_woken_up = True
-    conn.logger.bind(tag=TAG).info(f"工作台文字交由裝置 {conn.device_id} 回答並播放")
-    await conn.websocket.send(
-        json.dumps({"type": "web_chat", "state": "device_routed", "session_id": conn.session_id})
-    )
-    enqueue_asr_report(device_conn, text, [])
-    await startToChat(device_conn, text)
-    return True

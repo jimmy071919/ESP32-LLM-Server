@@ -138,8 +138,6 @@ class ConnectionHandler:
         self.headers = None
         self.device_id = None
         self.web_chat_mode = False
-        # 需要同步收到本連線 TTS 文字訊息的其他連線（工作台把文字交給裝置說時使用）
-        self.mirror_connections = set()
         self.client_ip = None
         self.prompt = None
         self.welcome_msg = None
@@ -265,8 +263,6 @@ class ConnectionHandler:
 
             # 认证通过,继续处理
             self.websocket = ws
-            if self.server is not None and hasattr(self.server, "register_connection"):
-                self.server.register_connection(self)
 
             # 检查是否来自MQTT连接
             request_path = ws.request.path
@@ -308,8 +304,6 @@ class ConnectionHandler:
             self.logger.bind(tag=TAG).error(f"Connection error: {str(e)}-{stack_trace}")
             return
         finally:
-            if self.server is not None and hasattr(self.server, "unregister_connection"):
-                self.server.unregister_connection(self)
             try:
                 await self._save_and_close(ws)
             except Exception as final_error:

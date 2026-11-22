@@ -136,10 +136,6 @@
                     <span v-if="webChatBusy" class="typing-indicator">小智正在回覆</span>
                   </div>
                   <div class="live-chat-actions">
-                    <label class="speak-on-device" title="把 AI 的回答交給實體小智裝置播出">
-                      <input v-model="speakOnDevice" type="checkbox" />
-                      用裝置說出回答
-                    </label>
                     <button v-if="webChatStatus !== 'connected'" type="button" :disabled="webChatConnecting" @click="connectWebChat">
                       {{ webChatConnecting ? '連線中…' : '重新連線' }}
                     </button>
@@ -147,7 +143,6 @@
                   </div>
                 </div>
                 <div v-if="webChatError" class="live-chat-error" role="alert">{{ webChatError }}</div>
-                <div v-else-if="webChatNotice" class="live-chat-notice" role="status">{{ webChatNotice }}</div>
                 <div v-if="webSearchEnabled === false" class="search-config-note" role="note">
                   <span>此 agent 尚未啟用一般網頁搜尋；已配置的新聞工具仍可使用。</span>
                   <button type="button" @click="$router.push({ path: '/role-config', query: { agentId: selectedAgentId } })">設定搜尋</button>
@@ -428,10 +423,6 @@ export default {
       webChatMac: '',
       webChatClientId: '',
       webChatSessionId: '',
-      speakOnDevice: true,
-      webChatRoutedToDevice: false,
-      webChatNotice: '',
-      webChatBusyTimer: null,
       webSearchEnabled: null,
       liveAssistantMessageId: ''
     }
@@ -864,8 +855,6 @@ export default {
       this.webChatMac = ''
       this.webChatClientId = ''
       this.liveAssistantMessageId = ''
-      this.webChatNotice = ''
-      this.clearWebChatBusyTimer()
     },
     handleWebChatMessage(raw) {
       if (typeof raw !== 'string') return
@@ -886,31 +875,15 @@ export default {
         }, 1200)
         return
       }
-      if (message.type === 'web_chat') {
-        if (message.state === 'device_routed') {
-          this.webChatRoutedToDevice = true
-          this.webChatNotice = '已交給小智裝置回答，裝置會說出 AI 的回覆。'
-        } else if (message.state === 'device_offline') {
-          this.webChatRoutedToDevice = false
-          this.webChatNotice = '小智裝置目前未連線（需先喚醒裝置），這次只在畫面顯示文字回覆。'
-        }
-        return
-      }
       if (message.type !== 'tts') return
       if (message.state === 'sentence_start' && message.text) this.appendWebChatText(message.text)
       if (message.state === 'stop') {
-        this.clearWebChatBusyTimer()
-        if (!this.webChatBusy && !this.liveAssistantMessageId) return
         this.webChatBusy = false
         const pending = this.messages.find((item) => item.id === this.liveAssistantMessageId)
         if (pending) pending.pending = false
         this.liveAssistantMessageId = ''
-        if (!this.webChatRoutedToDevice) this.refreshLiveHistory()
+        this.refreshLiveHistory()
       }
-    },
-    clearWebChatBusyTimer() {
-      if (this.webChatBusyTimer) clearTimeout(this.webChatBusyTimer)
-      this.webChatBusyTimer = null
     },
     appendWebChatText(text) {
       let message = this.messages.find((item) => item.id === this.liveAssistantMessageId)
@@ -934,23 +907,8 @@ export default {
       this.liveAssistantMessageId = assistant.id
       this.webChatBusy = true
       this.webChatDraft = ''
-      this.webChatNotice = ''
-      this.webChatRoutedToDevice = false
-      this.clearWebChatBusyTimer()
-      // 安全機制：裝置或模型 90 秒沒有回覆時解除「回覆中」狀態
-      this.webChatBusyTimer = setTimeout(() => {
-        this.webChatBusyTimer = null
-        if (!this.webChatBusy) return
-        this.webChatBusy = false
-        const pending = this.messages.find((item) => item.id === this.liveAssistantMessageId)
-        if (pending) pending.pending = false
-        this.liveAssistantMessageId = ''
-        this.webChatNotice = '小智沒有在時間內回覆，請再試一次。'
-      }, 90000)
       try {
-        const payload = { type: 'listen', state: 'detect', text }
-        if (this.speakOnDevice) payload.speak_on_device = true
-        this.webChatSocket.send(JSON.stringify(payload))
+        this.webChatSocket.send(JSON.stringify({ type: 'listen', state: 'detect', text }))
       } catch (_) {
         this.webChatBusy = false
         assistant.pending = false
@@ -1407,9 +1365,6 @@ button.inline-resource-action { cursor: pointer; }
 }
 .live-chat-state { display: flex; align-items: center; gap: 7px; }
 .live-chat-state .status-dot { width: 7px; height: 7px; background: #a9b2bf; }
-.speak-on-device { display: inline-flex; align-items: center; gap: 6px; margin-right: 10px; color: #4b5872; font-size: 12px; cursor: pointer; user-select: none; }
-.speak-on-device input { margin: 0; accent-color: #5778ff; }
-.live-chat-notice { margin: 8px 0 0; padding: 8px 12px; border-radius: 10px; background: #eef3ff; color: #3f5bb3; font-size: 12px; }
 .live-chat-state.state-connected .status-dot { background: #2f9b72; }
 .live-chat-state.state-connecting .status-dot { background: #d19b45; }
 .live-chat-state.state-error .status-dot { background: #d85f5f; }

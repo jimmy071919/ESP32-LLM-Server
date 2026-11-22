@@ -35,7 +35,6 @@ from config.config_loader import get_config_from_api_async
 from core.auth import AuthManager, AuthenticationError
 from core.utils.modules_initialize import initialize_modules
 from core.utils.util import check_vad_update, check_asr_update
-from core.utils.connection_registry import ConnectionRegistry
 
 TAG = __name__
 
@@ -68,17 +67,6 @@ class WebSocketServer:
         secret_key = self.config["server"]["auth_key"]
         expire_seconds = auth_config.get("expire_seconds", None)
         self.auth = AuthManager(secret_key=secret_key, expire_seconds=expire_seconds)
-        # 每台裝置目前在線的連線（含實體裝置與工作台 web-chat 連線）
-        self.connection_registry = ConnectionRegistry()
-
-    def register_connection(self, handler) -> None:
-        self.connection_registry.register(handler)
-
-    def unregister_connection(self, handler) -> None:
-        self.connection_registry.unregister(handler)
-
-    def find_device_connection(self, device_id, exclude=None):
-        return self.connection_registry.find_device_connection(device_id, exclude)
 
     async def start(self):
         server_config = self.config["server"]
