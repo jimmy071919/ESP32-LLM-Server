@@ -30,9 +30,11 @@ class VADProvider(VADProviderBase):
         self.vad_threshold = float(threshold) if threshold else 0.5
         self.vad_threshold_low = float(threshold_low) if threshold_low else 0.2
 
-        self.silence_threshold_ms = (
+        configured_silence_ms = (
             int(min_silence_duration_ms) if min_silence_duration_ms else 1000
         )
+        # Avoid ending auto-listen on brief pauses; keep any longer user-configured value.
+        self.silence_threshold_ms = max(configured_silence_ms, 2000)
 
         self.frame_window_threshold = 3
 

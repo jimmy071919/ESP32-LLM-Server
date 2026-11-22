@@ -47,6 +47,8 @@ class MarkdownCleaner:
     """
     # 公式字符
     NORMAL_FORMULA_CHARS = re.compile(r'[a-zA-Z\\^_{}\+\-\(\)\[\]=]')
+    # Voice output should not spell long URLs; original display text is preserved by TTS providers.
+    URL_RE = re.compile(r"<https?://[^>\s]+>|(?:https?://|www\.)[^\s<>\"'`，。！？；：、,;]+", re.IGNORECASE)
 
     @staticmethod
     def _replace_inline_dollar(m: re.Match) -> str:
@@ -132,6 +134,10 @@ class MarkdownCleaner:
         """
         for regex, replacement in MarkdownCleaner.REGEXES:
             text = regex.sub(replacement, text)
+
+        text = MarkdownCleaner.URL_RE.sub('', text)
+        text = re.sub(r'[ \t]{2,}', ' ', text)
+        text = re.sub(r'\s+([，,。；;：:！？!?])', r'\1', text)
 
         # 去除emoji表情
         text = check_emoji(text)

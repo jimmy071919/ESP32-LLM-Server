@@ -1,7 +1,7 @@
 """Tests for the Message/Dialogue classes used to build LLM context."""
 import pytest
 
-from core.utils.dialogue import Dialogue, Message
+from core.utils.dialogue import Dialogue, Message, prepare_web_chat_dialogue
 
 
 def test_message_assigns_default_uniq_id():
@@ -81,3 +81,26 @@ async def test_get_llm_dialogue_separates_temporary_few_shot_from_actual_history
     contents = [m["content"] for m in msgs if m["role"] == "user"]
     assert "real user msg" in contents
     assert "fewshot example" in contents
+
+
+def test_prepare_web_chat_dialogue_adds_richer_text_mode_without_mutating_voice_prompt():
+    original = [
+        {"role": "system", "content": "Keep device replies short."},
+        {"role": "user", "content": "Explain this."},
+    ]
+    prepared, options = prepare_web_chat_dialogue(original, "openai")
+
+    assert "browser text chat mode" in prepared[0]["content"].lower()
+    assert original[0]["content"] == "Keep device replies short."
+    assert prepared[1] == original[1]
+    assert options == {"max_tokens": 1500}
+
+
+def test_prepare_web_chat_dialogue_does_not_override_other_provider_limits():
+    prepared, options = prepare_web_chat_dialogue(
+        [{"role": "user", "content": "Explain this."}], "ollama"
+    )
+
+    assert prepared[0]["role"] == "system"
+    assert "browser text chat mode" in prepared[0]["content"].lower()
+    assert options == {}

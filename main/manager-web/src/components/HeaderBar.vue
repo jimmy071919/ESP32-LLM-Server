@@ -17,6 +17,10 @@
         }" @click="handleRouter('home')">
           <span class="nav-text">{{ $t("header.smartManagement") }}</span>
         </div>
+        <div class="equipment-management" :class="{ 'active-tab': $route.path === '/assistant-workbench' }"
+          @click="$router.push('/assistant-workbench')">
+          <span class="nav-text">小智工作台</span>
+        </div>
         <!-- 普通用户显示音色克隆 -->
         <div v-if="!userInfo.superAdmin && featureStatus.voiceClone" class="equipment-management"
           :class="{ 'active-tab': $route.path === '/voice-clone-management' }"

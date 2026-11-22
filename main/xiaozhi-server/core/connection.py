@@ -29,8 +29,8 @@ from core.utils.modules_initialize import (
 )
 from core.handle.reportHandle import report, enqueue_tool_report
 from core.providers.tts.default import DefaultTTS
-from concurrent.futures import ThreadPoolExecutor
-from core.utils.dialogue import Message, Dialogue
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
+from core.utils.dialogue import Message, Dialogue, prepare_web_chat_dialogue
 from core.providers.asr.dto.dto import InterfaceType
 from core.handle.textHandle import handleTextMessage
 from core.providers.tools.unified_tool_handler import UnifiedToolHandler
@@ -60,6 +60,29 @@ LOCATION_QUERY_TERMS = (
 
 def needs_device_location(query):
     return bool(query) and any(term in query for term in LOCATION_QUERY_TERMS)
+
+
+def get_tool_progress_text(tool_name, tool_count=1):
+    """Return a short, user-facing status without exposing tool arguments."""
+    if tool_count > 1:
+        return "我先一起處理這幾件事，完成後馬上告訴你。"
+
+    name = str(tool_name or "").lower()
+    if "weather" in name:
+        return "我先查一下天氣資訊。"
+    if "news" in name:
+        return "我先整理最新消息。"
+    if "music" in name:
+        return "我來幫你準備音樂。"
+    if "location" in name:
+        return "我先確認目前位置。"
+    if "lunar" in name:
+        return "我查一下今天的農曆資訊。"
+    if "status" in name:
+        return "我先確認裝置狀態。"
+    if any(action in name for action in ("set_", "set", "volume", "brightness", "theme")):
+        return "我正在調整裝置設定。"
+    return "我先處理這件事，完成後馬上告訴你。"
 
 
 class TTSException(RuntimeError):
@@ -114,6 +137,7 @@ class ConnectionHandler:
         self.websocket: websockets.ServerConnection | None = None
         self.headers = None
         self.device_id = None
+        self.web_chat_mode = False
         self.client_ip = None
         self.prompt = None
         self.welcome_msg = None
@@ -224,11 +248,18 @@ class ConnectionHandler:
                 self.client_ip = real_ip.split(",")[0].strip()
             else:
                 self.client_ip = ws.remote_address[0]
+            safe_headers = {
+                key: "[REDACTED]" if key.lower() in {"authorization", "cookie", "set-cookie"} else value
+                for key, value in self.headers.items()
+            }
             self.logger.bind(tag=TAG).info(
-                f"{self.client_ip} conn - Headers: {self.headers}"
+                f"{self.client_ip} conn - Headers: {safe_headers}"
             )
 
             self.device_id = self.headers.get("device-id", None)
+            self.web_chat_mode = str(self.headers.get("client-id") or "").startswith(
+                "web-chat-"
+            )
 
             # 认证通过,继续处理
             self.websocket = ws
@@ -1156,6 +1187,27 @@ class ConnectionHandler:
                 functions.append(DIRECT_ANSWER_TOOL)
 
         response_message = []
+        progress_stop = threading.Event()
+        stream_activity = threading.Event()
+
+        def progress_watchdog():
+            while not progress_stop.wait(8):
+                if stream_activity.is_set():
+                    stream_activity.clear()
+                    continue
+                if not self.client_abort:
+                    self.last_activity_time = time.time() * 1000
+                    self.tts.tts_text_queue.put(
+                        TTSMessageDTO(
+                            sentence_id=current_sentence_id,
+                            sentence_type=SentenceType.MIDDLE,
+                            content_type=ContentType.TEXT,
+                            content_detail="我還在幫你處理，完成後馬上回覆。",
+                        )
+                    )
+
+        progress_thread = threading.Thread(target=progress_watchdog, daemon=True)
+        progress_thread.start()
 
         try:
             # 使用带记忆的对话
@@ -1175,24 +1227,37 @@ class ConnectionHandler:
                 self.system_introduced_speakers.add(cs)
                 speaker_for_system = cs
 
+            llm_dialogue = self.dialogue.get_llm_dialogue_with_memory(
+                memory_str, self.config.get("voiceprint", {}), speaker_for_system
+            )
+            llm_options = {}
+            if self.web_chat_mode:
+                llm_name = self.config.get("selected_module", {}).get("LLM")
+                llm_type = (
+                    self.config.get("LLM", {}).get(llm_name, {}).get("type", "")
+                )
+                llm_dialogue, llm_options = prepare_web_chat_dialogue(
+                    llm_dialogue, llm_type
+                )
+
             if self.intent_type == "function_call" and functions is not None:
                 # 使用支持functions的streaming接口
                 llm_responses = self.llm.response_with_functions(
                     self.session_id,
-                    self.dialogue.get_llm_dialogue_with_memory(
-                        memory_str, self.config.get("voiceprint", {}), speaker_for_system
-                    ),
+                    llm_dialogue,
                     functions=functions,
+                    **llm_options,
                 )
             else:
                 llm_responses = self.llm.response(
                     self.session_id,
-                    self.dialogue.get_llm_dialogue_with_memory(
-                        memory_str, self.config.get("voiceprint", {}), speaker_for_system
-                    ),
+                    llm_dialogue,
+                    **llm_options,
                 )
         except Exception as e:
             self.logger.bind(tag=TAG).error(f"LLM 处理出错 {query}: {e}")
+            progress_stop.set()
+            progress_thread.join(timeout=1)
             return None
 
         # 处理流式响应
@@ -1203,6 +1268,8 @@ class ConnectionHandler:
         emotion_flag = True
         try:
             for response in llm_responses:
+                stream_activity.set()
+                self.last_activity_time = time.time() * 1000
                 if self.client_abort:
                     break
                 if self.intent_type == "function_call" and functions is not None:
@@ -1286,6 +1353,9 @@ class ConnectionHandler:
                     )
                 )
             return
+        finally:
+            progress_stop.set()
+            progress_thread.join(timeout=1)
         # 处理function call
         if tool_call_flag:
             bHasError = False
@@ -1396,10 +1466,43 @@ class ConnectionHandler:
                 tool_call_timeout = int(self.config.get("tool_call_timeout", 30))
                 # 等待协程结束（实际等待时长为最慢的那个）
                 tool_results = []
+                progress_text = get_tool_progress_text(
+                    tool_calls_list[0].get("name"), len(futures_with_data)
+                )
+                self.tts.tts_text_queue.put(
+                    TTSMessageDTO(
+                        sentence_id=current_sentence_id,
+                        sentence_type=SentenceType.MIDDLE,
+                        content_type=ContentType.TEXT,
+                        content_detail=progress_text,
+                    )
+                )
+                self.last_activity_time = time.time() * 1000
+                last_progress_time = time.monotonic()
 
                 for future, tool_call_data, tool_input in futures_with_data:
                     try:
-                        result = future.result(timeout=tool_call_timeout)
+                        deadline = time.monotonic() + tool_call_timeout
+                        while True:
+                            remaining = deadline - time.monotonic()
+                            if remaining <= 0:
+                                raise FutureTimeoutError()
+                            try:
+                                result = future.result(timeout=min(8, remaining))
+                                break
+                            except FutureTimeoutError:
+                                now = time.monotonic()
+                                if now - last_progress_time >= 8:
+                                    self.last_activity_time = time.time() * 1000
+                                    self.tts.tts_text_queue.put(
+                                        TTSMessageDTO(
+                                            sentence_id=current_sentence_id,
+                                            sentence_type=SentenceType.MIDDLE,
+                                            content_type=ContentType.TEXT,
+                                            content_detail="我還在處理中，請再等我一下。",
+                                        )
+                                    )
+                                    last_progress_time = now
                         tool_results.append((result, tool_call_data))
                         # 使用公共方法上报工具调用结果
                         enqueue_tool_report(self, tool_call_data['name'], tool_input, str(result.result) if result.result else None, report_tool_call=False)
@@ -1549,6 +1652,15 @@ class ConnectionHandler:
                         )
                     )
 
+            self.tts.tts_text_queue.put(
+                TTSMessageDTO(
+                    sentence_id=self.sentence_id,
+                    sentence_type=SentenceType.MIDDLE,
+                    content_type=ContentType.TEXT,
+                    content_detail="這一步完成，我接著處理下一步。",
+                )
+            )
+            self.last_activity_time = time.time() * 1000
             self.chat(None, depth=depth + 1)
 
     def _report_worker(self):

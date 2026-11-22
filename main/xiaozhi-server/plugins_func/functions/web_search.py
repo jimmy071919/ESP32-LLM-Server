@@ -59,6 +59,10 @@ async def _search_metaso(api_key: str, query: str, max_results: int) -> str:
     data = response.json()
     logger.bind(tag=TAG).debug(f"秘塔搜索响应 | status: {response.status_code}")
 
+    error_code = data.get("errCode", data.get("err_code"))
+    if error_code not in (None, 0, "0", 200, "200"):
+        return f"联网搜索服务返回错误代码 {error_code}，请检查搜索服务配置。"
+
     webpages = data.get("webpages", [])
     if not webpages:
         return "未找到相关搜索结果。"
@@ -68,11 +72,14 @@ async def _search_metaso(api_key: str, query: str, max_results: int) -> str:
         title = item.get("title", "无标题")
         snippet = item.get("summary", "")
         date = item.get("date", "")
+        source_url = item.get("url") or item.get("link")
         lines.append(f"{i}. 标题：{title}")
         if date:
             lines.append(f"   日期：{date}")
         if snippet:
             lines.append(f"   摘要：{snippet}")
+        if source_url:
+            lines.append(f"   来源网址：{source_url}")
 
     return "\n".join(lines)
 
@@ -94,7 +101,7 @@ async def _search_tavily(api_key: str, query: str, max_results: int) -> str:
     async with httpx.AsyncClient(timeout=httpx.Timeout(15.0, connect=3.0)) as client:
         response = await client.post(url, json=payload, headers=headers)
     data = response.json()
-    logger.bind(tag=TAG).debug(f"Tavily搜索响应 | status: {response.status_code} | data: {data}")
+    logger.bind(tag=TAG).debug(f"Tavily搜索响应 | status: {response.status_code}")
 
     results = data.get("results", [])
     if not results:
@@ -102,12 +109,15 @@ async def _search_tavily(api_key: str, query: str, max_results: int) -> str:
 
     answer = data.get("answer", "")
     lines = [f"【联网搜索结果】\n总结：{answer}"]
-    # for i, item in enumerate(results, 1):
-    #     title = item.get("title", "无标题")
-    #     summary = item.get("content", "")
-    #     lines.append(f"{i}. 标题：{title}")
-    #     if summary:
-    #         lines.append(f"   摘要：{summary}")
+    for i, item in enumerate(results[:max_results], 1):
+        title = item.get("title", "无标题")
+        summary = item.get("content", "")
+        source_url = item.get("url") or item.get("link")
+        lines.append(f"{i}. 标题：{title}")
+        if summary:
+            lines.append(f"   摘要：{summary}")
+        if source_url:
+            lines.append(f"   来源网址：{source_url}")
 
     return "\n".join(lines)
 
@@ -142,9 +152,12 @@ async def _search_serply(api_key: str, query: str, max_results: int) -> str:
     for i, item in enumerate(results[:max_results], 1):
         title = item.get("title", "无标题")
         snippet = item.get("description", "")
+        source_url = item.get("url") or item.get("link")
         lines.append(f"{i}. 标题：{title}")
         if snippet:
             lines.append(f"   摘要：{snippet}")
+        if source_url:
+            lines.append(f"   来源网址：{source_url}")
 
     return "\n".join(lines)
 

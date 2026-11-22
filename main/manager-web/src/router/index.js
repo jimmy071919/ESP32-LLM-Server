@@ -40,6 +40,13 @@ const routes = [
     }
   },
   {
+    path: '/assistant-workbench',
+    name: 'AssistantWorkbench',
+    component: function () {
+      return import('../views/AssistantWorkbench.vue')
+    }
+  },
+  {
     path: '/register',
     name: 'Register',
     component: function () {

@@ -161,3 +161,24 @@ class Dialogue:
             self.getMessages(m, dialogue)
 
         return dialogue
+
+
+def prepare_web_chat_dialogue(dialogue, llm_type):
+    """Enrich browser-chat context without changing the stored/voice dialogue."""
+    prepared = [dict(message) for message in dialogue]
+    instruction = (
+        "Browser text chat mode: provide a complete, helpful answer with useful detail; "
+        "do not force the short spoken-device reply style. Use clear paragraphs and "
+        "lists when helpful. Do not include raw URLs in the prose; cite source titles, "
+        "because the chat interface displays source links separately."
+    )
+    system_message = next(
+        (message for message in prepared if message.get("role") == "system"), None
+    )
+    if system_message is None:
+        prepared.insert(0, {"role": "system", "content": instruction})
+    else:
+        system_message["content"] = f"{system_message.get('content', '')}\n\n{instruction}"
+
+    request_options = {"max_tokens": 1500} if str(llm_type).lower() == "openai" else {}
+    return prepared, request_options

@@ -30,15 +30,20 @@ services:
       - ./models/SenseVoiceSmall/model.pt:/opt/xiaozhi-esp32-server/models/SenseVoiceSmall/model.pt
       # 覆盖上游内建提示词，避免强制虚构国籍或政治身份
       - ./agent-base-prompt.txt:/opt/xiaozhi-esp32-server/agent-base-prompt.txt:ro
+      # Keep URLs visible to the chat UI but out of spoken TTS; extend auto-listen across brief pauses.
+      - ./core/utils/tts.py:/opt/xiaozhi-esp32-server/core/utils/tts.py:ro
+      - ./core/providers/vad/silero.py:/opt/xiaozhi-esp32-server/core/providers/vad/silero.py:ro
       # 套用本地連線邏輯修正：位置相關問題先查裝置定位
       - ./core/connection.py:/opt/xiaozhi-esp32-server/core/connection.py:ro
+      - ./core/utils/dialogue.py:/opt/xiaozhi-esp32-server/core/utils/dialogue.py:ro
+      - ./plugins_func/functions/web_search.py:/opt/xiaozhi-esp32-server/plugins_func/functions/web_search.py:ro
       # Native Codex OAuth provider and model-id/manager-secret wiring
       - ./core/providers/llm/codex_oauth:/opt/xiaozhi-esp32-server/core/providers/llm/codex_oauth:ro
       - ./core/utils/modules_initialize.py:/opt/xiaozhi-esp32-server/core/utils/modules_initialize.py:ro
 
   # manager-api和manager-web模块
   xiaozhi-esp32-server-web:
-    image: xiaozhi-server-sv-web:latest
+    image: xiaozhi-server-sv-web:assistant-workbench-no-tailnet-dns-20261122
     build:
       context: ../..
       dockerfile: Dockerfile-web
