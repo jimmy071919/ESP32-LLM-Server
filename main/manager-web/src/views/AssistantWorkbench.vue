@@ -23,6 +23,9 @@
               <span>{{ sessions.length }} 段已載入</span>
             </div>
             <div class="session-actions">
+              <button class="new-chat-button" :class="{ active: chatMode === 'live' }" type="button" :disabled="!selectedAgentId" @click="startWebChat">
+                <i class="el-icon-chat-line-round"></i> 文字對話
+              </button>
               <button class="new-chat-button" type="button" :disabled="!selectedAgentId" @click="startDeviceMonitor">
                 <i class="el-icon-monitor"></i> {{ deviceMonitorActive ? '追蹤 ESP32' : '即時設備' }}
               </button>
@@ -733,6 +736,15 @@ export default {
       }
     },
     startWebChat() {
+      if (!this.selectedAgentId) return
+      // 停止即時設備監看，避免輪詢覆蓋文字對話內容
+      if (this.deviceMonitorActive) {
+        this.deviceMonitorActive = false
+        this.deviceMonitorPolling = false
+        this.deviceMonitorError = ''
+        this.requestSequence += 1
+        this.setRefreshInterval(10000)
+      }
       this.disconnectWebChat()
       this.chatMode = 'live'
       this.activeTab = 'chat'
@@ -1123,6 +1135,7 @@ export default {
   white-space: nowrap;
 }
 .new-chat-button:hover { border-color: #aac2e8; background: #f7faff; }
+.new-chat-button.active { border-color: #5778ff; background: #eef3ff; }
 .new-chat-button:disabled { cursor: not-allowed; opacity: .5; }
 .new-chat-button i { margin-right: 3px; }
 .icon-button {
