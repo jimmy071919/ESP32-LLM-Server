@@ -22,7 +22,7 @@ public class Sm2DecryptUtil {
      * 解密SM2加密内容，提取验证码并验证
      * 
      * @param encryptedPassword SM2加密的密码字符串
-     * @param captchaId         验证码ID
+     * @param captchaId         验证码ID；為空時不驗證圖形驗證碼，解密內容直接作為密碼
      * @param captchaService    验证码服务
      * @param sysParamsService  系统参数服务
      * @return 解密后的实际密码
@@ -41,6 +41,15 @@ public class Sm2DecryptUtil {
             decryptedContent = SM2Utils.decrypt(privateKeyStr, encryptedPassword);
         } catch (Exception e) {
             throw new RenException(ErrorCode.SM2_DECRYPT_ERROR);
+        }
+
+        // 已停用圖形驗證碼：前端不再送 captchaId 時，解密內容即為密碼本身。
+        // 仍送 captchaId 的舊用戶端（例如 manager-mobile）維持「前 5 位驗證碼 + 密碼」格式。
+        if (StringUtils.isBlank(captchaId)) {
+            if (StringUtils.isEmpty(decryptedContent)) {
+                throw new RenException(ErrorCode.SM2_DECRYPT_ERROR);
+            }
+            return decryptedContent;
         }
 
         // 分离验证码和密码：前5位是验证码，后面是密码

@@ -80,16 +80,6 @@
                   type="password" show-password />
               </div>
 
-              <!-- 验证码部分保持相同 -->
-              <div v-if="!enableMobileRegister"
-                style="display: flex; align-items: center; margin-top: 20px; width: 100%; gap: 10px;">
-                <div class="input-box" style="width: calc(100% - 130px); margin-top: 0;">
-                  <i class="el-icon-circle-check input-symbol"></i>
-                  <el-input v-model="form.captcha" :placeholder="$t('register.captchaPlaceholder')" style="flex: 1;" />
-                </div>
-                <img loading="lazy" v-if="captchaUrl" :src="captchaUrl" alt="验证码"
-                  style="width: 150px; height: 40px; cursor: pointer;" @click="fetchCaptcha" />
-              </div>
 
               <!-- 修改底部链接 -->
               <div style="font-weight: 400;font-size: 14px;text-align: left;color: #5778ff;margin-top: 20px;">
@@ -169,9 +159,11 @@ export default {
         setTimeout(() => {
           goToPage('/login');
         }, 1500);
+        return;
       }
+      // 圖形驗證碼只用於發送簡訊（手機註冊模式）
+      if (this.enableMobileRegister) this.fetchCaptcha();
     });
-    this.fetchCaptcha();
   },
   methods: {
     openPage(url) {
@@ -276,16 +268,10 @@ export default {
         showDanger(this.$t('register.passwordsNotMatch'))
         return
       }
-      // 验证验证码
-      if (!this.validateInput(this.form.captcha, this.$t('register.requiredCaptcha'))) {
-        return;
-      }
-      // 加密
+      // 加密密码（已停用圖形驗證碼，只加密密碼本身）
       let encryptedPassword;
       try {
-        // 拼接验证码和密码
-        const captchaAndPassword = this.form.captcha + this.form.password;
-        encryptedPassword = sm2Encrypt(this.sm2PublicKey, captchaAndPassword);
+        encryptedPassword = sm2Encrypt(this.sm2PublicKey, this.form.password);
       } catch (error) {
         console.error("密码加密失败:", error);
         showDanger(this.$t('sm2.encryptionFailed'));
@@ -303,7 +289,6 @@ export default {
       const registerData = {
         username: plainUsername,
         password: encryptedPassword,
-        captchaId: this.form.captchaId,
         mobileCaptcha: this.form.mobileCaptcha
       };
 

@@ -220,10 +220,6 @@ export default {
         showDanger(this.$t('retrievePassword.inputCorrectMobile'));
         return;
       }
-      if (!this.form.captcha) {
-        showDanger(this.$t('retrievePassword.captchaRequired'));
-        return;
-      }
       if (!this.form.mobileCaptcha) {
         showDanger(this.$t('retrievePassword.mobileCaptchaRequired'));
         return;
@@ -236,9 +232,8 @@ export default {
       // 加密密码
       let encryptedPassword;
       try {
-        // 拼接图形验证码和新密码进行加密
-        const captchaAndPassword = this.form.captcha + this.form.newPassword;
-        encryptedPassword = sm2Encrypt(this.sm2PublicKey, captchaAndPassword);
+        // 已停用圖形驗證碼前綴：只加密新密碼本身（圖形驗證碼仍用於發送簡訊）
+        encryptedPassword = sm2Encrypt(this.sm2PublicKey, this.form.newPassword);
       } catch (error) {
         console.error("密码加密失败:", error);
         showDanger(this.$t('sm2.encryptionFailed'));
@@ -249,7 +244,7 @@ export default {
         phone: this.form.areaCode + this.form.mobile,
         password: encryptedPassword,
         code: this.form.mobileCaptcha,
-        captchaId: this.form.captchaId
+        captchaId: ''
       }, (res) => {
         showSuccess(this.$t('retrievePassword.passwordUpdateSuccess'));
         goToPage('/login');

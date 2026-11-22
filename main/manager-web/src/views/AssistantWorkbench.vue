@@ -2,18 +2,6 @@
   <div class="assistant-workbench">
     <HeaderBar :devices="agents" />
     <main class="workbench-shell">
-      <header class="workbench-heading">
-        <div>
-          <div class="eyebrow">ESP32 · HERMES API</div>
-          <h1>小智工作台</h1>
-          <p>查看對話、教會小智你的做事方式，並整理它回覆中的檔案與來源。</p>
-        </div>
-        <div v-if="selectedAgent" class="agent-chip">
-          <span class="status-dot"></span>
-          {{ selectedAgent.agentName }}
-        </div>
-      </header>
-
       <section class="workbench-grid">
         <aside class="session-panel">
           <label class="field-label" for="agent-picker">選擇小智</label>
@@ -1034,45 +1022,6 @@ export default {
   padding: 32px 0 40px;
   flex: 1;
 }
-.workbench-heading {
-  min-height: 96px;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 24px;
-  margin-bottom: 22px;
-}
-.eyebrow {
-  color: #63718a;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: .14em;
-  margin-bottom: 8px;
-}
-.workbench-heading h1 {
-  margin: 0;
-  color: #111a2b;
-  font-size: 27px;
-  letter-spacing: -.035em;
-  line-height: 1.2;
-}
-.workbench-heading p {
-  color: #657188;
-  font-size: 13px;
-  margin: 8px 0 0;
-}
-.agent-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  padding: 9px 13px;
-  border: 1px solid #e4e9f1;
-  border-radius: 999px;
-  background: #fff;
-  color: #39465c;
-  font-size: 12px;
-  box-shadow: 0 3px 14px rgba(25, 43, 75, .03);
-}
 .status-dot {
   width: 7px;
   height: 7px;
@@ -1596,10 +1545,6 @@ button.inline-resource-action { cursor: pointer; }
 }
 @media (max-width: 680px) {
   .workbench-shell { width: 100%; padding: 18px 12px 24px; }
-  .workbench-heading { min-height: 0; margin: 0 4px 16px; }
-  .workbench-heading h1 { font-size: 23px; }
-  .workbench-heading p { max-width: 270px; font-size: 11px; }
-  .agent-chip { margin-top: 18px; max-width: 135px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
   .workbench-grid { display: flex; flex-direction: column; min-height: calc(100vh - 165px); border-radius: 11px; }
   .session-panel { min-height: 0; padding: 14px; border-right: 0; border-bottom: 1px solid #e9edf3; }
   .session-heading { margin: 13px 2px 8px; }
