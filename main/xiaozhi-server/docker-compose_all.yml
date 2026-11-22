@@ -37,7 +37,7 @@ services:
 
   # manager-api和manager-web模块
   xiaozhi-esp32-server-web:
-    image: xiaozhi-server-sv-web:assistant-workbench-no-tailnet-dns-20261122
+    image: xiaozhi-server-sv-web:non-cn-20261122
     build:
       context: ../..
       dockerfile: Dockerfile-web

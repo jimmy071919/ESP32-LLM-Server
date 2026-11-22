@@ -5,10 +5,13 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-FORBIDDEN='ghcr\.nju\.edu\.cn|mirrors\.aliyun\.com|bigmodel\.cn|dashscope|aliyuncs\.com|volces\.com|deepseek\.com|qweatherapi|qweather\.(com|net)|metaso\.cn|newsnow\.busiyi|chinanews\.com|pconline\.com\.cn'
+FORBIDDEN='ghcr\.nju\.edu\.cn|mirrors\.aliyun\.com|maven\.aliyun\.com|npmmirror\.com|bigmodel\.cn|dashscope|aliyuncs\.com|volces\.com|deepseek\.com|qweatherapi|qweather\.(com|net)|metaso\.cn|newsnow\.busiyi|chinanews\.com|pconline\.com\.cn'
 GATED=(
   Dockerfile-server Dockerfile-server-base Dockerfile-server-deps Dockerfile-web Dockerfile-web-local
   main/xiaozhi-server/docker-compose_all.yml
+  main/manager-api/pom.xml
+  main/manager-web/.npmrc
+  main/manager-web/package-lock.json
   main/xiaozhi-server/plugins_func/functions/get_weather.py
   main/xiaozhi-server/plugins_func/functions/get_news_rss.py
   main/xiaozhi-server/plugins_func/functions/web_search.py
