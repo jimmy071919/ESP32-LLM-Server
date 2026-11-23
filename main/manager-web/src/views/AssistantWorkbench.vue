@@ -18,10 +18,6 @@
           </el-select>
 
           <div class="session-heading">
-            <div>
-              <h2>對話</h2>
-              <span>{{ sessions.length }} 段 · 只保留最近 5 段</span>
-            </div>
             <div class="session-actions">
               <button class="new-chat-button" :class="{ active: chatMode === 'live' }" type="button" :disabled="!selectedAgentId" @click="startWebChat">
                 <i class="el-icon-chat-line-round"></i> 文字對話
@@ -1060,13 +1056,6 @@ export default {
   align-items: center;
   margin: 25px 2px 12px;
 }
-.session-heading h2 {
-  margin: 0 0 3px;
-  color: #1e2a3e;
-  font-size: 14px;
-  font-weight: 700;
-}
-.session-heading span { color: #8c96a8; font-size: 11px; }
 .session-actions { display: flex; align-items: center; gap: 6px; }
 .new-chat-button {
   min-height: 32px;
