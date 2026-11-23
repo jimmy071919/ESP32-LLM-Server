@@ -67,7 +67,7 @@ public class AgentChatHistoryServiceImpl extends CrudRepository<AiAgentChatHisto
         List<AgentChatSessionDTO> records = result.getRecords().stream().map(map -> {
             AgentChatSessionDTO dto = new AgentChatSessionDTO();
             dto.setSessionId((String) map.get("session_id"));
-            dto.setCreatedAt((LocalDateTime) map.get("created_at"));
+            dto.setCreatedAt(toLocalDateTime(map.get("created_at")));
             dto.setChatCount(((Number) map.get("chat_count")).intValue());
             dto.setTitle(agentChatTitleService.getTitleBySessionId(dto.getSessionId()));
             return dto;
@@ -258,5 +258,26 @@ public class AgentChatHistoryServiceImpl extends CrudRepository<AiAgentChatHisto
                 .eq(AgentChatHistoryEntity::getAudioId, audioId)
                 .eq(AgentChatHistoryEntity::getAgentId, agentId));
         return row == 1;
+    }
+
+    /** MAX(created_at) comes back as LocalDateTime from MySQL but as 'yyyy-MM-dd HH:mm:ss' text from SQLite. */
+    private static LocalDateTime toLocalDateTime(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof LocalDateTime localDateTime) {
+            return localDateTime;
+        }
+        if (value instanceof java.sql.Timestamp timestamp) {
+            return timestamp.toLocalDateTime();
+        }
+        if (value instanceof java.util.Date date) {
+            return LocalDateTime.ofInstant(date.toInstant(), java.time.ZoneId.systemDefault());
+        }
+        String text = value.toString().trim().replace('T', ' ');
+        if (text.length() > 19) {
+            text = text.substring(0, 19);
+        }
+        return LocalDateTime.parse(text, java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
     }
 }

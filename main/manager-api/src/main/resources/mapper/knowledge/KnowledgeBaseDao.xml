@@ -29,7 +29,7 @@
         SET document_count = document_count + #{docDelta},
             chunk_count = chunk_count + #{chunkDelta},
             token_num = token_num + #{tokenDelta},
-            updated_at = NOW()
+            updated_at = datetime('now','localtime')
         WHERE dataset_id = #{datasetId}
     </update>
 

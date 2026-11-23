@@ -86,7 +86,7 @@
         SELECT *
         FROM ai_agent
         WHERE id = #{agentId}
-        FOR UPDATE
+        <!-- SQLite has no row locks; a write transaction already serializes writers -->
     </select>
 
     <update id="updateSnapshotFields">

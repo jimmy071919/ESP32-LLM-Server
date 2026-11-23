@@ -16,6 +16,9 @@ spring:
   # 环境 dev|test|prod
   profiles:
     active: dev
+  liquibase:
+    # SQLite schema baseline (the MySQL changelogs under db/changelog are kept for reference only)
+    change-log: classpath:db/changelog-sqlite/db.changelog-master.yaml
   messages:
     encoding: UTF-8
     basename: i18n/messages

@@ -11,7 +11,6 @@ services:
       dockerfile: Dockerfile-server-deps
     container_name: xiaozhi-esp32-server
     depends_on:
-      - xiaozhi-esp32-server-db
       - xiaozhi-esp32-server-redis
     restart: always
     networks:
@@ -37,7 +36,7 @@ services:
 
   # manager-api和manager-web模块
   xiaozhi-esp32-server-web:
-    image: xiaozhi-server-sv-web:no-session-heading-20261123
+    image: xiaozhi-server-sv-web:sqlite-20261123
     build:
       context: ../..
       dockerfile: Dockerfile-web
@@ -46,8 +45,6 @@ services:
     networks:
       - default
     depends_on:
-      xiaozhi-esp32-server-db:
-        condition: service_healthy
       xiaozhi-esp32-server-redis:
         condition: service_healthy
     ports:
@@ -55,9 +52,7 @@ services:
       - "127.0.0.1:18002:8002"
     environment:
       - TZ=Asia/Taipei
-      - SPRING_DATASOURCE_DRUID_URL=jdbc:mysql://xiaozhi-esp32-server-db:3306/xiaozhi_esp32_server?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Taipei&nullCatalogMeansCurrent=true&connectTimeout=30000&socketTimeout=30000&autoReconnect=true&failOverReadOnly=false&maxReconnects=10
-      - SPRING_DATASOURCE_DRUID_USERNAME=${MYSQL_APP_USER:-root}
-      - SPRING_DATASOURCE_DRUID_PASSWORD=${MYSQL_APP_PASSWORD:-${MYSQL_ROOT_PASSWORD:?請在 .env 設定 MYSQL_ROOT_PASSWORD（見 .env.example）}}
+      # 資料庫：SQLite 單一檔案（./sqlite/xiaozhi.db），路徑在 manager-api application-dev.yml
       - SPRING_DATA_REDIS_HOST=xiaozhi-esp32-server-redis
       - SPRING_DATA_REDIS_PASSWORD=
       - SPRING_DATA_REDIS_PORT=6379
@@ -66,6 +61,8 @@ services:
     volumes:
       # 配置文件目录
       - ./uploadfile:/uploadfile
+      # SQLite 資料庫（取代原本的 MySQL 容器）
+      - ./sqlite:/data
 
   # 统一入口：智控台/OTA 转发到 8002，WebSocket 转发到 8000
   xiaozhi-edge-proxy:
@@ -80,27 +77,6 @@ services:
       - ./nginx-aiot.conf:/etc/nginx/conf.d/default.conf:ro
 
   # 数据库模块
-  xiaozhi-esp32-server-db:
-    image: mysql:26.10.0
-    container_name: xiaozhi-esp32-server-db
-    healthcheck:
-      test: [ "CMD", "mysqladmin" ,"ping", "-h", "localhost" ]
-      timeout: 45s
-      interval: 10s
-      retries: 10
-    restart: always
-    networks:
-      - default
-    expose:
-      - 3306
-    volumes:
-      - ./mysql/data:/var/lib/mysql
-    environment:
-      - TZ=Asia/Taipei
-      # 只在第一次初始化資料目錄時生效；既有資料庫改密碼請依 runbook 執行 ALTER USER
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:?請在 .env 設定 MYSQL_ROOT_PASSWORD（見 .env.example）}
-      - MYSQL_DATABASE=xiaozhi_esp32_server
-      - MYSQL_INITDB_ARGS="--character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci"
   # redis模块
   xiaozhi-esp32-server-redis:
     image: redis:8-alpine

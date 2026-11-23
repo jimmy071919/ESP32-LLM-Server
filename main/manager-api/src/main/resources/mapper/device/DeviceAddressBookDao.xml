@@ -11,19 +11,19 @@
 
     <update id="updateAlias">
         UPDATE ai_device_address_book
-        SET alias = #{alias}, update_date = NOW()
+        SET alias = #{alias}, update_date = datetime('now','localtime')
         WHERE mac_address = #{macAddress} AND target_mac = #{targetMac}
     </update>
 
     <update id="updatePermission">
         UPDATE ai_device_address_book
-        SET has_permission = #{hasPermission}, update_date = NOW()
+        SET has_permission = #{hasPermission}, update_date = datetime('now','localtime')
         WHERE mac_address = #{macAddress} AND target_mac = #{targetMac}
     </update>
 
     <insert id="insertAddressBook">
         INSERT INTO ai_device_address_book (mac_address, target_mac, alias, has_permission, creator, create_date, updater, update_date)
-        VALUES (#{macAddress}, #{targetMac}, #{alias}, #{hasPermission}, #{creator}, NOW(), #{updater}, NOW())
+        VALUES (#{macAddress}, #{targetMac}, #{alias}, #{hasPermission}, #{creator}, datetime('now','localtime'), #{updater}, datetime('now','localtime'))
     </insert>
 
     <delete id="deleteByMacAddresses">

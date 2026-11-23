@@ -10,15 +10,17 @@ knife4j:
 spring:
   datasource:
     druid:
-      #MySQL
-      driver-class-name: com.mysql.cj.jdbc.Driver
-      url: jdbc:mysql://127.0.0.1:3306/xiaozhi_esp32_server?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC&nullCatalogMeansCurrent=true
-      username: root
-      password: 123456
-      initial-size: 10
-      max-active: 100
-      min-idle: 10
+      # SQLite (single file). date_class/date_string_format keep dates as 'yyyy-MM-dd HH:mm:ss' text,
+      # the format the MySQL→SQLite migration wrote; busy_timeout waits for a concurrent writer.
+      driver-class-name: org.sqlite.JDBC
+      url: jdbc:sqlite:/data/xiaozhi.db?journal_mode=WAL&busy_timeout=10000&foreign_keys=false&date_class=TEXT&date_string_format=yyyy-MM-dd HH:mm:ss
+      username:
+      password:
+      initial-size: 1
+      max-active: 8
+      min-idle: 1
       max-wait: 6000
+      validation-query: SELECT 1
       pool-prepared-statements: true
       max-pool-prepared-statement-per-connection-size: 20
       time-between-eviction-runs-millis: 60000
