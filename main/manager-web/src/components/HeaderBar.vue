@@ -3,8 +3,8 @@
     <div class="header-container">
       <!-- 左侧元素 -->
       <div class="header-left" @click="handleRouter('home')">
-        <span class="brand-mark">X</span>
-        <span class="brand-name">小智控制台</span>
+        <span class="brand-mark">AI</span>
+        <span class="brand-name">AI 控制台</span>
       </div>
 
       <!-- 中间导航菜单 -->
@@ -19,7 +19,7 @@
         </div>
         <div class="equipment-management" :class="{ 'active-tab': $route.path === '/assistant-workbench' }"
           @click="$router.push('/assistant-workbench')">
-          <span class="nav-text">小智工作台</span>
+          <span class="nav-text">助理工作台</span>
         </div>
         <!-- 普通用户显示音色克隆 -->
         <div v-if="!userInfo.superAdmin && featureStatus.voiceClone" class="equipment-management"

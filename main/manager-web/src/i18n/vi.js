@@ -204,7 +204,7 @@ export default {
   'firmwareDialog.firmwareFile': 'Tệp firmware',
   'firmwareDialog.clickUpload': 'Nhấp để tải lên',
   'firmwareDialog.uploadTip': 'Chỉ hỗ trợ tệp firmware (.bin/.apk), kích thước không vượt quá 100MB',
-  'firmwareDialog.uploadHint': 'Nhắc nhở: Vui lòng tải lên tệp xiaozhi.bin đã hợp nhất trước, không phải tệp merged-binary.bin đã hợp nhất',
+  'firmwareDialog.uploadHint': 'Nhắc nhở: Vui lòng tải lên tệp firmware .bin đã hợp nhất trước, không phải tệp merged-binary.bin đã hợp nhất',
   'firmwareDialog.remark': 'Ghi chú',
   'firmwareDialog.remarkPlaceholder': 'Vui lòng nhập thông tin ghi chú',
   'firmwareDialog.requiredFirmwareName': 'Vui lòng nhập tên firmware (board + phiên bản)',
@@ -298,7 +298,7 @@ export default {
 
   // Register page related
   'register.title': 'Tạo tài khoản',
-  'register.welcome': 'Chào mừng đến với XiaoZhi AI',
+  'register.welcome': 'Chào mừng đến với AI Console',
   'register.usernamePlaceholder': 'Vui lòng nhập tên đăng nhập',
   'register.mobilePlaceholder': 'Vui lòng nhập số điện thoại di động',
   'register.captchaPlaceholder': 'Vui lòng nhập mã xác minh',
@@ -590,7 +590,7 @@ export default {
   'button.close': 'Đóng',
 
   // System information
-  'system.name': 'Dịch vụ XiaoZhi',
+  'system.name': 'AI Console',
 
   // Voiceprint related
   'voiceprint.management': 'Quản lý dấu giọng nói',
@@ -729,7 +729,7 @@ export default {
 
   // Home page text
   'home.addAgent': 'Thêm tác nhân',
-  'home.greeting': 'Xin chào XiaoZhi',
+  'home.greeting': 'Xin chào',
   'home.wish': 'Chúc bạn một ngày tuyệt vời!',
   'home.languageModel': 'LLM',
   'home.voiceModel': 'TTS',
@@ -802,7 +802,7 @@ export default {
   'paramManagement.deleteFailed': 'Xóa thất bại, vui lòng thử lại',
   'paramManagement.operationCancelled': 'Đã hủy xóa',
   'paramManagement.operationClosed': 'Đã đóng thao tác',
-  'paramManagement.updateSuccess': 'Cập nhật thành công. Một số cấu hình chỉ có hiệu lực sau khi khởi động lại mô-đun xiaozhi-server.',
+  'paramManagement.updateSuccess': 'Cập nhật thành công. Một số cấu hình chỉ có hiệu lực sau khi khởi động lại dịch vụ backend.',
   'paramManagement.addSuccess': 'Thêm thành công',
   'paramManagement.updateFailed': 'Cập nhật thất bại',
   'paramManagement.addFailed': 'Thêm thất bại',
@@ -1014,7 +1014,7 @@ export default {
   // Mô tả Tooltip cho trường biểu mẫu
   'roleConfig.tooltip.agentName': 'Đặt tên cho tác nhân AI của bạn để nhận dạng và nhận biết',
   'roleConfig.tooltip.roleTemplate': 'Chọn từ các mẫu vai trò được đặt trước để nhanh chóng định cấu hình cài đặt cơ bản cho tác nhân của bạn',
-  'roleConfig.tooltip.contextProvider': 'Khi XiaoZhi được kích hoạt, lấy dữ liệu từ hệ thống bên ngoài và tiêm động vào lời nhắc hệ thống của LLM',
+  'roleConfig.tooltip.contextProvider': 'Khi trợ lý được kích hoạt, lấy dữ liệu từ hệ thống bên ngoài và tiêm động vào lời nhắc hệ thống của LLM',
   'roleConfig.tooltip.roleIntroduction': 'Xác định vị trí vai trò, đặc điểm tính cách, quy tắc hành vi và nền tảng kiến thức chuyên môn của tác nhân AI',
   'roleConfig.tooltip.memoryHis': 'Tóm tắt nội dung bản ghi trò chuyện',
   'roleConfig.tooltip.languageCode': 'Đặt mã ngôn ngữ như vi-VN, en-US, v.v., được sử dụng để nhận dạng các tính năng cụ thể',
@@ -1103,7 +1103,7 @@ export default {
   'modelConfig.enableSuccess': 'Bật thành công',
   'modelConfig.disableSuccess': 'Tắt thành công',
   'modelConfig.operationFailed': 'Thao tác thất bại',
-  'modelConfig.setDefaultSuccess': 'Đặt mô hình mặc định thành công, vui lòng khởi động lại module xiaozhi-server thủ công kịp thời',
+  'modelConfig.setDefaultSuccess': 'Đặt mô hình mặc định thành công, vui lòng khởi động lại dịch vụ backend thủ công kịp thời',
   'modelConfig.itemsPerPage': '{items} mục/trang',
   'modelConfig.firstPage': 'Trang đầu',
   'modelConfig.prevPage': 'Trang trước',

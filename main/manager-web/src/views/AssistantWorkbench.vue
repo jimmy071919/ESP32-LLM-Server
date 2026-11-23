@@ -4,7 +4,7 @@
     <main class="workbench-shell">
       <section class="workbench-grid">
         <aside class="session-panel">
-          <label class="field-label" for="agent-picker">選擇小智</label>
+          <label class="field-label" for="agent-picker">選擇助理</label>
           <el-select
             id="agent-picker"
             v-model="selectedAgentId"
@@ -77,7 +77,7 @@
         </aside>
 
         <section class="workspace-panel">
-          <nav class="workspace-tabs" aria-label="小智工作台分頁">
+          <nav class="workspace-tabs" aria-label="助理工作台分頁">
             <button type="button" :class="{ active: activeTab === 'chat' }" @click="activeTab = 'chat'">
               對話內容
             </button>
@@ -96,7 +96,7 @@
 
           <div v-if="!selectedAgentId && !loadingAgents" class="workspace-empty">
             <div class="empty-mark"><i class="el-icon-monitor"></i></div>
-            <h2>{{ agents.length ? '選擇一個小智開始' : '尚未建立小智' }}</h2>
+            <h2>{{ agents.length ? '選擇一個助理開始' : '尚未建立助理' }}</h2>
             <p>{{ agents.length ? '從左側選擇智能體，即可查看它的對話與成果。' : '先到智能管理新增智能體並連線 ESP32。' }}</p>
             <el-button v-if="!agents.length" type="primary" @click="$router.push('/home')">前往智能管理</el-button>
           </div>
@@ -133,7 +133,7 @@
                 <div class="live-chat-toolbar">
                   <div class="live-chat-state" :class="`state-${webChatStatus}`">
                     <span class="status-dot"></span>{{ webChatStatusLabel }}
-                    <span v-if="webChatBusy" class="typing-indicator">小智正在回覆</span>
+                    <span v-if="webChatBusy" class="typing-indicator">助理正在回覆</span>
                   </div>
                   <div class="live-chat-actions">
                     <button v-if="webChatStatus !== 'connected'" type="button" :disabled="webChatConnecting" @click="connectWebChat">
@@ -153,7 +153,7 @@
                 <div v-if="!messages.length" class="message-empty live-empty">
                   <i class="el-icon-chat-line-round"></i>
                   <strong>想查什麼或聊什麼？</strong>
-                  <span>直接輸入問題，小智的回答和可辨識來源會顯示在對話裡。</span>
+                  <span>直接輸入問題，助理的回答和可辨識來源會顯示在對話裡。</span>
                 </div>
                 <div v-else ref="messageList" class="message-list live-message-list">
                   <article
@@ -191,7 +191,7 @@
                             :key="`${part.type}-${partIndex}`"
                             class="message-part"
                           >{{ part.text }}</div>
-                          <span v-if="message.pending" class="typing-dots" aria-label="小智正在回覆"><i></i><i></i><i></i></span>
+                          <span v-if="message.pending" class="typing-dots" aria-label="助理正在回覆"><i></i><i></i><i></i></span>
                         </div>
                         <div v-if="message.resources.files.length || message.resources.links.length" class="message-resources">
                           <a v-for="link in message.resources.links" :key="link.url" :href="link.url" target="_blank" rel="noopener noreferrer" class="inline-resource-card source-link">
@@ -209,7 +209,7 @@
                     v-model="webChatDraft"
                     rows="1"
                     :disabled="webChatStatus !== 'connected' || webChatBusy"
-                    placeholder="傳送訊息給小智…"
+                    placeholder="傳送訊息給助理…"
                     aria-label="輸入訊息"
                     @keydown="handleWebChatKeydown"
                   ></textarea>
@@ -228,7 +228,7 @@
               <div v-else-if="!currentSessionId" class="message-empty">
                 <i class="el-icon-chat-line-round"></i>
                 <strong>{{ deviceMonitorActive ? '等待你和 ESP32 說話' : '選一段對話來查看' }}</strong>
-                <span>{{ deviceMonitorActive ? '你對設備說話後，辨識文字、查詢內容、來源與小智回答會同步顯示在這裡。' : '對話由 ESP32 收音，小智的回覆與文字紀錄會顯示在這裡。' }}</span>
+                <span>{{ deviceMonitorActive ? '你對設備說話後，辨識文字、查詢內容、來源與助理回答會同步顯示在這裡。' : '對話由 ESP32 收音，助理的回覆與文字紀錄會顯示在這裡。' }}</span>
               </div>
               <div v-else-if="!messages.length" class="message-empty">
                 <i class="el-icon-document"></i>
@@ -242,7 +242,7 @@
                   class="message-row"
                   :class="messageClass(message)"
                 >
-                  <div class="message-avatar">{{ message.chatType === 1 ? '你' : message.chatType === 3 ? '執行' : '小智' }}</div>
+                  <div class="message-avatar">{{ message.chatType === 1 ? '你' : message.chatType === 3 ? '執行' : '助理' }}</div>
                   <div class="message-body">
                     <div class="message-meta">
                       <strong>{{ message.chatType === 1 ? '你' : message.chatType === 3 ? '工具紀錄' : selectedAgent.agentName }}</strong>
@@ -295,7 +295,7 @@
               <div class="teach-intro">
                 <span class="teach-icon"><i class="el-icon-edit-outline"></i></span>
                 <div>
-                  <h2>把做事方式教給小智</h2>
+                  <h2>把做事方式教給助理</h2>
                   <p>這些規則會保存到「{{ selectedAgent.agentName }}」的提示詞，之後的對話會一併使用。原有角色設定會保留。</p>
                 </div>
               </div>
@@ -362,7 +362,7 @@
                   </div>
                   <div v-else class="resource-empty small-empty">這段對話沒有找到可開啟的新聞或網頁連結。</div>
                 </div>
-                <p class="resource-footnote">只整理小智在這段對話中實際回傳的網址；本機檔案路徑不會被當成下載連結。</p>
+                <p class="resource-footnote">只整理助理在這段對話中實際回傳的網址；本機檔案路徑不會被當成下載連結。</p>
               </template>
             </section>
           </template>
@@ -529,7 +529,7 @@ export default {
       }, () => {
         if (this.selectedAgentId === agentId) {
           this.loadingPrompt = false
-          this.$message.error('無法讀取小智設定，請稍後再試。')
+          this.$message.error('無法讀取助理設定，請稍後再試。')
         }
       })
     },
@@ -753,7 +753,7 @@ export default {
       if (process.env.NODE_ENV === 'production' &&
         !isAllowedWebChatOrigin(window.location.origin, parseAllowedHosts(process.env.VUE_APP_WEB_CHAT_ALLOWED_HOSTS))) {
         this.webChatStatus = 'error'
-        this.webChatError = '請使用支援小智 WebSocket 代理的 HTTPS 管理網址進行文字聊天。'
+        this.webChatError = '請使用支援 WebSocket 代理的 HTTPS 管理網址進行文字聊天。'
         return
       }
       this.webChatConnecting = true
@@ -767,7 +767,7 @@ export default {
         const devices = response?.data?.data
         const device = Array.isArray(devices) ? devices[0] : null
         const deviceId = String(device?.macAddress || '').trim()
-        if (!deviceId) throw new Error('這個小智尚未綁定設備。')
+        if (!deviceId) throw new Error('這個助理尚未綁定設備。')
         if (!device?.appVersion) throw new Error('設備版本資料不完整，請先讓設備重新連線。')
 
         const clientId = `web-chat-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
@@ -783,13 +783,13 @@ export default {
             version: 0,
             uuid: '',
             application: {
-              name: 'xiaozhi-web-chat',
+              name: 'web-chat',
               version: device.appVersion,
               compile_time: 'web-chat',
               idf_version: 'web',
               elf_sha256: 'web-chat'
             },
-            ota: { label: 'xiaozhi-web-chat' },
+            ota: { label: 'web-chat' },
             board: {
               type: device.board || device.deviceType || 'web-chat',
               ssid: 'web-chat',
@@ -821,7 +821,7 @@ export default {
           socket.send(JSON.stringify({
             type: 'hello',
             device_id: deviceId,
-            device_name: '小智工作台',
+            device_name: '助理工作台',
             device_mac: deviceId,
             features: { mcp: true, emoji: false }
           }))
@@ -829,7 +829,7 @@ export default {
         socket.onmessage = (event) => this.handleWebChatMessage(event.data)
         socket.onerror = () => {
           this.webChatStatus = 'error'
-          this.webChatError = '無法連線到小智，請確認目前的 HTTPS 管理網址支援 /xiaozhi/v1/ WebSocket 代理後重試。'
+          this.webChatError = '無法連線到助理，請確認目前的 HTTPS 管理網址支援 WebSocket 代理後重試。'
         }
         socket.onclose = () => {
           if (this.webChatSocket === socket) this.webChatSocket = null
@@ -862,7 +862,7 @@ export default {
       try {
         message = JSON.parse(raw)
       } catch (_) {
-        this.webChatError = '小智回傳了無法讀取的訊息。'
+        this.webChatError = '助理回傳了無法讀取的訊息。'
         return
       }
       if (message.type === 'hello' && message.session_id) {

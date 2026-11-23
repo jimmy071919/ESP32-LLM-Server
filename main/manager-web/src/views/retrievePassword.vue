@@ -2,7 +2,7 @@
   <div class="welcome" @keyup.enter="retrievePassword">
     <el-container style="height: 100%;">
       <el-header class="auth-header">
-        <div class="auth-brand"><span class="auth-brand-mark">X</span><span>小智控制台</span></div>
+        <div class="auth-brand"><span class="auth-brand-mark">AI</span><span>AI 控制台</span></div>
       </el-header>
       <section class="auth-intro" aria-label="重設密碼">
         <span class="auth-eyebrow">ACCOUNT RECOVERY</span>

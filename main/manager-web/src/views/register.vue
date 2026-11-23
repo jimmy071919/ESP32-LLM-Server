@@ -2,7 +2,7 @@
   <div class="welcome" @keyup.enter="register">
     <el-container style="height: 100%;">
       <el-header class="auth-header">
-        <div class="auth-brand"><span class="auth-brand-mark">X</span><span>小智控制台</span></div>
+        <div class="auth-brand"><span class="auth-brand-mark">AI</span><span>AI 控制台</span></div>
       </el-header>
       <section class="auth-intro" aria-label="帳號註冊">
         <span class="auth-eyebrow">CREATE ACCOUNT</span>

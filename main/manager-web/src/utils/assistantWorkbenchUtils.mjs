@@ -108,7 +108,7 @@ export function extractResources(messages = []) {
 }
 
 export function buildWebSocketUrl(websocketInfo, deviceId, clientId, pageOrigin) {
-  if (!websocketInfo?.url || !deviceId || !clientId) throw new Error('缺少小智連線資料')
+  if (!websocketInfo?.url || !deviceId || !clientId) throw new Error('缺少助理連線資料')
   const page = new URL(pageOrigin)
   const url = new URL(websocketInfo.url, page)
   url.protocol = page.protocol === 'https:' ? 'wss:' : 'ws:'
