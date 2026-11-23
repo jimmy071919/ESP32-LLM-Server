@@ -136,12 +136,13 @@
 .auth-brand-mark {
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
-  color: #fff;
-  font-size: 14px;
-  background: #111827;
-  border-radius: 9px;
+  width: 36px;
+  height: 36px;
+
+  svg {
+    width: 100%;
+    height: 100%;
+  }
 }
 
 .auth-intro {

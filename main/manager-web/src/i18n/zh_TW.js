@@ -298,7 +298,7 @@ export default {
 
   // 註冊頁面相關
   'register.title': '建立帳號',
-  'register.welcome': '歡迎使用 AI 控制台',
+  'register.welcome': '歡迎',
   'register.usernamePlaceholder': '請輸入使用者名稱',
   'register.mobilePlaceholder': '請輸入手機號碼',
   'register.captchaPlaceholder': '請輸入驗證碼',
@@ -590,7 +590,7 @@ export default {
   'button.close': '關閉',
 
   // 系统信息
-  'system.name': 'AI 控制台',
+  'system.name': 'App',
 
   // 声纹相关
   'voiceprint.management': '聲紋管理',

@@ -2,7 +2,7 @@
   <div class="welcome">
     <el-container style="height: 100%">
       <el-header class="auth-header">
-        <div class="auth-brand"><span class="auth-brand-mark">AI</span><span>AI 控制台</span></div>
+        <div class="auth-brand"><span class="auth-brand-mark"><svg viewBox="0 0 64 64" aria-hidden="true"><line x1="32" y1="7" x2="32" y2="15" stroke="#111827" stroke-width="4" stroke-linecap="round"/><circle cx="32" cy="6" r="4.5" fill="#111827"/><rect x="3" y="29" width="7" height="14" rx="3.5" fill="#111827"/><rect x="54" y="29" width="7" height="14" rx="3.5" fill="#111827"/><rect x="8" y="14" width="48" height="44" rx="15" fill="#111827"/><circle cx="24" cy="34" r="5" fill="#fff"/><circle cx="40" cy="34" r="5" fill="#fff"/><line x1="26" y1="46" x2="38" y2="46" stroke="#fff" stroke-width="4" stroke-linecap="round"/></svg></span></div>
       </el-header>
       <section class="auth-intro" aria-label="產品介紹">
         <span class="auth-eyebrow">VOICE AI CONSOLE</span>

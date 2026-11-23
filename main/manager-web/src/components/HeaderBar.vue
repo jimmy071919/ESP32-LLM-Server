@@ -3,8 +3,7 @@
     <div class="header-container">
       <!-- 左侧元素 -->
       <div class="header-left" @click="handleRouter('home')">
-        <span class="brand-mark">AI</span>
-        <span class="brand-name">AI 控制台</span>
+        <span class="brand-mark"><svg viewBox="0 0 64 64" aria-hidden="true"><line x1="32" y1="7" x2="32" y2="15" stroke="#111827" stroke-width="4" stroke-linecap="round"/><circle cx="32" cy="6" r="4.5" fill="#111827"/><rect x="3" y="29" width="7" height="14" rx="3.5" fill="#111827"/><rect x="54" y="29" width="7" height="14" rx="3.5" fill="#111827"/><rect x="8" y="14" width="48" height="44" rx="15" fill="#111827"/><circle cx="24" cy="34" r="5" fill="#fff"/><circle cx="40" cy="34" r="5" fill="#fff"/><line x1="26" y1="46" x2="38" y2="46" stroke="#fff" stroke-width="4" stroke-linecap="round"/></svg></span>
       </div>
 
       <!-- 中间导航菜单 -->
@@ -477,17 +476,11 @@ export default {
   place-items: center;
   width: 30px;
   height: 30px;
-  color: #fff;
-  font-size: 13px;
-  font-weight: 700;
-  background: #111827;
-  border-radius: 8px;
 }
 
-.brand-name {
-  color: #111827;
-  font-size: 15px;
-  font-weight: 700;
+.brand-mark svg {
+  width: 100%;
+  height: 100%;
 }
 
 .header-center {

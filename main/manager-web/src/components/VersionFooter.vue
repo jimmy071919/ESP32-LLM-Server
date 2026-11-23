@@ -1,7 +1,7 @@
 <template>
   <div class="copyright">
     <div class="footer-content">
-      <span>{{ year }} {{ name }} {{ version }}</span>
+      <span>{{ year }} {{ version }}</span>
     </div>
   </div>
 </template>
@@ -14,7 +14,6 @@ export default {
   computed: {
     ...mapState({
       version: state => state.pubConfig.version,
-      name: state => state.pubConfig.name,
       year: state => state.pubConfig.year
     })
   },

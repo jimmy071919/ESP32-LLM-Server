@@ -298,7 +298,7 @@ export default {
 
   // Página de registro
   'register.title': 'Criar Conta',
-  'register.welcome': 'Bem-vindo ao AI Console',
+  'register.welcome': 'Bem-vindo',
   'register.usernamePlaceholder': 'Por favor, insira o nome de usuário',
   'register.mobilePlaceholder': 'Por favor, insira o número de celular',
   'register.captchaPlaceholder': 'Por favor, insira o captcha',
@@ -590,7 +590,7 @@ export default {
   'button.close': 'Fechar',
 
   // Informações do sistema
-  'system.name': 'AI Console',
+  'system.name': 'App',
 
   // Impressão vocal
   'voiceprint.management': 'Gerenciamento de Impressão Vocal',

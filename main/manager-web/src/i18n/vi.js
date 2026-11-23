@@ -298,7 +298,7 @@ export default {
 
   // Register page related
   'register.title': 'Tạo tài khoản',
-  'register.welcome': 'Chào mừng đến với AI Console',
+  'register.welcome': 'Chào mừng',
   'register.usernamePlaceholder': 'Vui lòng nhập tên đăng nhập',
   'register.mobilePlaceholder': 'Vui lòng nhập số điện thoại di động',
   'register.captchaPlaceholder': 'Vui lòng nhập mã xác minh',
@@ -590,7 +590,7 @@ export default {
   'button.close': 'Đóng',
 
   // System information
-  'system.name': 'AI Console',
+  'system.name': 'App',
 
   // Voiceprint related
   'voiceprint.management': 'Quản lý dấu giọng nói',
