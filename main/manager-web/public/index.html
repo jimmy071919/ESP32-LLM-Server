@@ -7,8 +7,10 @@
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <meta name="description" content="<%= process.env.VUE_APP_DESCRIPTION %>">
   <meta name="keywords" content="<%= process.env.VUE_APP_KEYWORDS %>">
-  <link rel="icon" type="image/svg+xml" href="<%= BASE_URL %>robot.svg">
-  <link rel="alternate icon" href="<%= BASE_URL %>favicon.ico">
+  <link rel="icon" type="image/svg+xml" href="<%= BASE_URL %>robot-icon.svg">
+  <link rel="icon" type="image/x-icon" sizes="16x16 32x32 48x48 64x64" href="<%= BASE_URL %>robot-icon.ico">
+  <link rel="shortcut icon" href="<%= BASE_URL %>robot-icon.ico">
+  <link rel="apple-touch-icon" href="<%= BASE_URL %>robot-icon-180.png">
   <title></title>
   <% if (htmlWebpackPlugin.options.cdn && htmlWebpackPlugin.options.cdn.css) { %>
     <% for (var i in htmlWebpackPlugin.options.cdn.css) { %>
