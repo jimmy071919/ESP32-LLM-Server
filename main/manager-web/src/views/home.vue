@@ -7,13 +7,6 @@
         <!-- 首页内容 -->
         <div class="add-device">
           <div class="add-device-bg">
-            <div class="hellow-text" style="padding-top: 30px;">
-              {{ $t('home.greeting') }}
-            </div>
-            <div class="hellow-text">
-              {{ $t('home.wish') }}
-            </div>
-            <div class="hi-hint">管理你的語音助理與連線裝置</div>
             <div class="add-device-options">
             <div class="search-container">
               <div class="search-wrapper">
@@ -448,7 +441,7 @@ export default {
 }
 
 .add-device {
-  height: 195px;
+  padding: 20px 0;
   border: 1px solid #e5e7eb;
   border-radius: 16px;
   position: relative;
@@ -470,26 +463,9 @@ export default {
   box-sizing: border-box;
 
   /* 兼容老版本Opera浏览器 */
-  .hellow-text {
-    margin-left: 75px;
-    color: #3d4566;
-    font-size: 33px;
-    font-weight: 700;
-    letter-spacing: 0;
-  }
-
-  .hi-hint {
-    font-weight: 400;
-    font-size: 12px;
-    text-align: left;
-    color: #818cae;
-    margin-left: 75px;
-    margin-top: 5px;
-  }
 }
 .add-device-options {
   display: flex;
-  margin-top: 16px;
   margin-left: 75px;
   align-items: center;
 }
