@@ -7,4 +7,6 @@ public interface AgentChatTitleService {
     void saveOrUpdateTitle(String sessionId, String title);
 
     String getTitleBySessionId(String sessionId);
+
+    void deleteBySessionId(String sessionId);
 }

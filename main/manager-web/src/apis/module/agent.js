@@ -264,6 +264,19 @@ export default {
                 });
             }).send();
     },
+    // 删除智能体的单个会话
+    deleteAgentChatSession(agentId, sessionId, callback, onFail) {
+        RequestService.sendRequest()
+            .url(`${getServiceUrl()}/agent/${agentId}/chat-history/${encodeURIComponent(sessionId)}`)
+            .method('DELETE')
+            .success((res) => {
+                RequestService.clearRequestTime();
+                callback(res);
+            })
+            .networkFail(() => {
+                if (onFail) onFail();
+            }).send();
+    },
     // 获取智能体聊天记录
     getAgentChatHistory(agentId, sessionId, callback, macAddress = '') {
         const macFilter = macAddress ? `?macAddress=${encodeURIComponent(macAddress)}` : '';

@@ -42,21 +42,32 @@
             placeholder="搜尋對話"
           />
           <div class="session-list">
-            <button
+            <div
               v-for="session in visibleSessions"
               :key="session.sessionId"
-              type="button"
+              role="button"
+              tabindex="0"
               class="session-card"
-              :class="{ selected: currentSessionId === session.sessionId }"
+              :class="{ selected: currentSessionId === session.sessionId, deleting: deletingSessionId === session.sessionId }"
               @click="openSession(session)"
+              @keydown.enter.self="openSession(session)"
             >
               <span class="session-mark"><i class="el-icon-chat-dot-round"></i></span>
               <span class="session-copy">
                 <strong>{{ session.title || formatTime(session.createdAt) }}</strong>
                 <small>{{ formatTime(session.createdAt) }}<template v-if="session.chatCount"> · {{ session.chatCount }} 則</template></small>
               </span>
-              <i class="el-icon-arrow-right session-arrow"></i>
-            </button>
+              <button
+                class="session-delete"
+                type="button"
+                title="刪除這段對話"
+                aria-label="刪除這段對話"
+                :disabled="!!deletingSessionId"
+                @click.stop="deleteSession(session)"
+              >
+                <i :class="deletingSessionId === session.sessionId ? 'el-icon-loading' : 'el-icon-delete'"></i>
+              </button>
+            </div>
             <div v-if="loadingSessions" class="quiet-state">載入對話中…</div>
             <div v-else-if="!visibleSessions.length && !sessions.length" class="quiet-state">
               <i class="el-icon-chat-line-round"></i>
@@ -80,9 +91,6 @@
           <nav class="workspace-tabs" aria-label="助理工作台分頁">
             <button type="button" :class="{ active: activeTab === 'chat' }" @click="activeTab = 'chat'">
               對話內容
-            </button>
-            <button type="button" :class="{ active: activeTab === 'teach' }" @click="activeTab = 'teach'">
-              教它做事
             </button>
             <button type="button" :class="{ active: activeTab === 'outputs' }" @click="activeTab = 'outputs'">
               成果
@@ -286,36 +294,14 @@
               </div>
               <footer v-if="currentSessionId && messages.length" class="chat-footer">
                 <span><i class="el-icon-lock"></i> 僅顯示此帳號有權限查看的對話</span>
-                <span>{{ messages.length }} 則訊息</span>
+                <span class="chat-footer-actions">
+                  {{ messages.length }} 則訊息
+                  <button v-if="currentSession" class="footer-delete" type="button" :disabled="!!deletingSessionId" @click="deleteSession(currentSession)">
+                    <i class="el-icon-delete"></i> 刪除這段對話
+                  </button>
+                </span>
               </footer>
               </template>
-            </section>
-
-            <section v-else-if="activeTab === 'teach'" class="tab-content teach-content">
-              <div class="teach-intro">
-                <span class="teach-icon"><i class="el-icon-edit-outline"></i></span>
-                <div>
-                  <h2>把做事方式教給助理</h2>
-                  <p>這些規則會保存到「{{ selectedAgent.agentName }}」的提示詞，之後的對話會一併使用。原有角色設定會保留。</p>
-                </div>
-              </div>
-              <label class="field-label" for="teaching-rules">你希望它記住什麼？</label>
-              <el-input
-                id="teaching-rules"
-                v-model="teachingDraft"
-                type="textarea"
-                :rows="12"
-                resize="vertical"
-                placeholder="例如：&#10;當我說「找今天的 AI 新聞」時，先整理 5 則最新消息。&#10;每則都附上標題、日期和原始新聞連結。&#10;如果要產生檔案，請提供真實可下載的連結；沒有連結時要明確說明。"
-                :disabled="loadingPrompt || savingTeaching"
-              />
-              <div class="teach-footer">
-                <span>{{ loadingPrompt ? '正在讀取設定…' : '留白後儲存會移除這些教學，不影響其他角色設定。' }}</span>
-                <el-button type="primary" :loading="savingTeaching" :disabled="loadingPrompt || !promptLoaded" @click="saveTeaching">
-                  儲存教學
-                </el-button>
-              </div>
-              <div v-if="teachingSaved" class="saved-note"><i class="el-icon-circle-check"></i> 已保存，後續對話會使用這些教學。</div>
             </section>
 
             <section v-else class="tab-content outputs-content">
@@ -376,7 +362,7 @@
 <script>
 import Api from '@/apis/api'
 import HeaderBar from '@/components/HeaderBar.vue'
-import { buildWebSocketUrl, extractResources, isAllowedWebChatOrigin, messageParts, parseAllowedHosts, readTeaching, writeTeaching } from '@/utils/assistantWorkbenchUtils.mjs'
+import { buildWebSocketUrl, extractResources, isAllowedWebChatOrigin, messageParts, parseAllowedHosts } from '@/utils/assistantWorkbenchUtils.mjs'
 
 const PAGE_SIZE = 20
 
@@ -408,12 +394,7 @@ export default {
       boundDevices: [],
       chatHistoryConf: null,
       savingHistory: false,
-      loadingPrompt: false,
-      savingTeaching: false,
-      promptLoaded: false,
-      originalPrompt: '',
-      teachingDraft: '',
-      teachingSaved: false,
+      deletingSessionId: '',
       webChatSocket: null,
       webChatStatus: 'offline',
       webChatConnecting: false,
@@ -494,41 +475,28 @@ export default {
       this.loadingMessages = false
       this.refreshing = false
       this.savingHistory = false
-      this.savingTeaching = false
-      this.teachingSaved = false
+      this.deletingSessionId = ''
       this.sessionPage = 1
       this.hasMoreSessions = false
       this.sessionSearch = ''
       this.chatHistoryConf = null
       this.webSearchEnabled = null
-      this.promptLoaded = false
-      this.teachingDraft = ''
-      this.originalPrompt = ''
       this.loadAgentConfig()
       this.startDeviceMonitor()
     },
     loadAgentConfig() {
       if (!this.selectedAgentId) return
       const agentId = this.selectedAgentId
-      this.loadingPrompt = true
       Api.agent.getDeviceConfig(agentId, (res) => {
         if (this.selectedAgentId !== agentId) return
         const config = res?.data?.data
-        if (!config) {
-          this.loadingPrompt = false
-          return
-        }
+        if (!config) return
         this.chatHistoryConf = Number(config.chatHistoryConf ?? 0)
         this.webSearchEnabled = Array.isArray(config.functions)
           ? config.functions.some((item) => item.providerCode === 'web_search')
           : false
-        this.originalPrompt = String(config.systemPrompt || '')
-        this.teachingDraft = readTeaching(this.originalPrompt)
-        this.promptLoaded = true
-        this.loadingPrompt = false
       }, () => {
         if (this.selectedAgentId === agentId) {
-          this.loadingPrompt = false
           this.$message.error('無法讀取助理設定，請稍後再試。')
         }
       })
@@ -970,24 +938,43 @@ export default {
         })
       }).catch(() => {})
     },
-    saveTeaching() {
-      if (!this.selectedAgentId || !this.promptLoaded || this.savingTeaching) return
+    deleteSession(session) {
+      if (!session?.sessionId || !this.selectedAgentId || this.deletingSessionId) return
       const agentId = this.selectedAgentId
-      const nextPrompt = writeTeaching(this.originalPrompt, this.teachingDraft)
-      this.savingTeaching = true
-      this.teachingSaved = false
-      Api.agent.updateAgentConfig(agentId, { systemPrompt: nextPrompt }, (res) => {
-        if (this.selectedAgentId !== agentId) return
-        this.savingTeaching = false
-        if (res?.data?.code === 0) {
-          this.originalPrompt = nextPrompt
-          this.teachingDraft = readTeaching(nextPrompt)
-          this.teachingSaved = true
-          this.$message.success('教學已保存。')
-        } else {
-          this.$message.error(res?.data?.msg || '保存失敗，原有角色設定未變更。')
-        }
-      })
+      const sessionId = session.sessionId
+      const label = session.title || this.formatTime(session.createdAt)
+      this.$confirm(`確定要刪除「${label}」嗎？這段對話的文字與錄音會永久刪除，無法復原。`, '刪除對話', {
+        confirmButtonText: '刪除',
+        cancelButtonText: '取消',
+        confirmButtonClass: 'el-button--danger',
+        type: 'warning'
+      }).then(() => {
+        this.deletingSessionId = sessionId
+        Api.agent.deleteAgentChatSession(agentId, sessionId, (res) => {
+          if (this.selectedAgentId !== agentId) return
+          this.deletingSessionId = ''
+          if (res?.data?.code !== 0) {
+            this.$message.error(res?.data?.msg || '刪除失敗，請稍後再試。')
+            return
+          }
+          const index = this.sessions.findIndex((item) => item.sessionId === sessionId)
+          this.sessions = this.sessions.filter((item) => item.sessionId !== sessionId)
+          if (this.currentSessionId === sessionId) {
+            this.requestSequence += 1
+            this.currentSessionId = ''
+            this.messages = []
+            this.loadingMessages = false
+            const next = this.sessions[Math.min(Math.max(index, 0), this.sessions.length - 1)]
+            if (next && !this.deviceMonitorActive) this.openSession(next)
+          }
+          this.$message.success('已刪除對話。')
+        }, () => {
+          if (this.selectedAgentId === agentId) {
+            this.deletingSessionId = ''
+            this.$message.error('刪除失敗，請檢查網路後再試。')
+          }
+        })
+      }).catch(() => {})
     },
     messageClass(message) {
       return message.chatType === 1 ? 'from-user' : message.chatType === 3 ? 'from-tool' : 'from-assistant'
@@ -1149,7 +1136,41 @@ export default {
   font-weight: 650;
 }
 .session-copy small { color: #929bad; font-size: 10px; }
-.session-arrow { color: #9aa4b4; font-size: 11px; }
+.session-card.deleting { opacity: .55; }
+.session-card:focus-visible { outline: 2px solid #8fb2ef; outline-offset: -2px; }
+.session-delete {
+  flex: 0 0 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #a3acbb;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  font-size: 13px;
+  opacity: 0;
+  transition: opacity .16s ease, background .16s ease, color .16s ease;
+}
+.session-card:hover .session-delete,
+.session-card:focus-within .session-delete,
+.session-card.selected .session-delete,
+.session-card.deleting .session-delete { opacity: 1; }
+.session-delete:hover:not(:disabled) { color: #d64545; background: #fdecec; }
+.session-delete:disabled { cursor: not-allowed; }
+@media (hover: none) { .session-delete { opacity: 1; } }
+.chat-footer-actions { display: inline-flex; align-items: center; gap: 12px; }
+.footer-delete {
+  border: 0;
+  background: transparent;
+  color: #b0596a;
+  font-size: inherit;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 5px;
+}
+.footer-delete:hover:not(:disabled) { color: #d64545; background: #fdecec; }
+.footer-delete:disabled { opacity: .5; cursor: not-allowed; }
 .quiet-state {
   min-height: 66px;
   color: #8a95a7;
@@ -1459,26 +1480,8 @@ button.inline-resource-action { cursor: pointer; }
 }
 .chat-composer button:hover:not(:disabled) { background: #245bb4; }
 .chat-composer button:disabled { background: #d6deea; cursor: not-allowed; }
-.teach-content { padding: 28px clamp(20px, 5vw, 60px); }
-.teach-intro { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 28px; }
-.teach-icon {
-  flex: 0 0 40px;
-  height: 40px;
-  display: grid;
-  place-items: center;
-  border-radius: 12px;
-  background: #edf3ff;
-  color: #3e70c5;
-  font-size: 18px;
-}
-.teach-intro h2, .outputs-heading h2 { margin: 1px 0 6px; color: #243149; font-size: 16px; }
-.teach-intro p, .outputs-heading p { margin: 0; color: #7c8799; font-size: 11px; line-height: 1.7; }
-.teach-content .el-textarea { margin-bottom: 12px; }
-.teach-content >>> .el-textarea__inner { border-color: #e1e6ef; background: #fbfcfe; color: #334057; line-height: 1.8; font-size: 12px; padding: 13px 14px; }
-.teach-footer { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
-.teach-footer span { color: #929cad; font-size: 10px; }
-.saved-note { margin-top: 16px; color: #48805e; font-size: 11px; }
-.saved-note i { margin-right: 5px; }
+.outputs-heading h2 { margin: 1px 0 6px; color: #243149; font-size: 16px; }
+.outputs-heading p { margin: 0; color: #7c8799; font-size: 11px; line-height: 1.7; }
 .outputs-content { padding: 26px clamp(20px, 4vw, 48px); }
 .outputs-heading { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
 .result-count { padding: 6px 10px; border-radius: 999px; background: #f2f5fa; color: #67748a; font-size: 10px; }
@@ -1574,9 +1577,7 @@ button.inline-resource-action { cursor: pointer; }
   .message-list { min-height: 350px; padding: 16px 12px; gap: 17px; }
   .message-body { max-width: 88%; }
   .message-bubble { padding: 9px 10px; font-size: 11px; }
-  .teach-content, .outputs-content { padding: 20px 15px; }
-  .teach-footer { align-items: flex-start; }
-  .teach-footer span { line-height: 1.5; }
+  .outputs-content { padding: 20px 15px; }
   .inline-notice { padding: 9px 12px; flex-wrap: wrap; }
   .chat-composer { padding: 10px 12px; gap: 8px; }
   .chat-composer textarea { min-height: 44px; padding: 10px 11px; font-size: 16px; }

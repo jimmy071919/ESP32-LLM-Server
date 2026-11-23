@@ -131,6 +131,26 @@ public class AgentChatHistoryServiceImpl extends CrudRepository<AiAgentChatHisto
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int deleteBySessionId(String agentId, String sessionId) {
+        LambdaQueryWrapper<AgentChatHistoryEntity> wrapper = new LambdaQueryWrapper<AgentChatHistoryEntity>()
+                .eq(AgentChatHistoryEntity::getAgentId, agentId)
+                .eq(AgentChatHistoryEntity::getSessionId, sessionId);
+        List<String> audioIds = baseMapper.selectList(new LambdaQueryWrapper<AgentChatHistoryEntity>()
+                .select(AgentChatHistoryEntity::getAudioId)
+                .eq(AgentChatHistoryEntity::getAgentId, agentId)
+                .eq(AgentChatHistoryEntity::getSessionId, sessionId)
+                .isNotNull(AgentChatHistoryEntity::getAudioId))
+                .stream().map(AgentChatHistoryEntity::getAudioId).distinct().collect(Collectors.toList());
+        if (CollUtil.isNotEmpty(audioIds)) {
+            ListUtil.split(audioIds, 1000).forEach(baseMapper::deleteAudioByIds);
+        }
+        int deleted = baseMapper.delete(wrapper);
+        agentChatTitleService.deleteBySessionId(sessionId);
+        return deleted;
+    }
+
+    @Override
     public List<AgentChatHistoryUserVO> getRecentlyFiftyByAgentId(String agentId) {
         // 构建查询条件(不添加按照创建时间排序，数据本来就是主键越大创建时间越大
         // 不添加这样可以减少排序全部数据在分页的全盘扫描消耗)

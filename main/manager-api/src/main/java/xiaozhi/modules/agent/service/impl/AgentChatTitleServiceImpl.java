@@ -5,6 +5,7 @@ import java.util.Date;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 
 import lombok.RequiredArgsConstructor;
@@ -56,5 +57,11 @@ public class AgentChatTitleServiceImpl implements AgentChatTitleService {
 
         AgentChatTitleEntity entity = agentChatTitleDao.selectOne(wrapper);
         return entity != null ? entity.getTitle() : null;
+    }
+
+    @Override
+    public void deleteBySessionId(String sessionId) {
+        agentChatTitleDao.delete(new LambdaQueryWrapper<AgentChatTitleEntity>()
+                .eq(AgentChatTitleEntity::getSessionId, sessionId));
     }
 }

@@ -237,6 +237,17 @@ public class AgentController {
         return new Result<List<AgentChatHistoryDTO>>().ok(result);
     }
 
+    @DeleteMapping("/{id}/chat-history/{sessionId}")
+    @Operation(summary = "删除智能体的单个会话聊天记录")
+    @RequiresPermissions("sys:role:normal")
+    public Result<Integer> deleteAgentChatSession(
+            @PathVariable("id") String id,
+            @PathVariable("sessionId") String sessionId) {
+        requireAgentPermission(id);
+        int deleted = agentChatHistoryService.deleteBySessionId(id, sessionId);
+        return new Result<Integer>().ok(deleted);
+    }
+
     @GetMapping("/{id}/chat-history/user")
     @Operation(summary = "获取智能体聊天记录（用户）")
     @RequiresPermissions("sys:role:normal")
