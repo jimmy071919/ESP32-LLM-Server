@@ -151,6 +151,29 @@ public class AgentChatHistoryServiceImpl extends CrudRepository<AiAgentChatHisto
     }
 
     @Override
+    public int pruneSessions(String agentId, int keep) {
+        QueryWrapper<AgentChatHistoryEntity> wrapper = new QueryWrapper<>();
+        wrapper.select("session_id", "MAX(created_at) AS last_at")
+                .eq("agent_id", agentId)
+                .groupBy("session_id")
+                .orderByDesc("last_at")
+                .last("LIMIT 1000 OFFSET " + Math.max(keep, 0));
+        List<String> staleSessionIds = baseMapper.selectMaps(wrapper).stream()
+                .map(row -> (String) row.get("session_id"))
+                .filter(id -> id != null)
+                .collect(Collectors.toList());
+        staleSessionIds.forEach(sessionId -> deleteBySessionId(agentId, sessionId));
+        return staleSessionIds.size();
+    }
+
+    @Override
+    public List<String> getAgentIdsWithHistory() {
+        return baseMapper.selectObjs(new QueryWrapper<AgentChatHistoryEntity>()
+                .select("DISTINCT agent_id"))
+                .stream().map(String::valueOf).collect(Collectors.toList());
+    }
+
+    @Override
     public List<AgentChatHistoryUserVO> getRecentlyFiftyByAgentId(String agentId) {
         // 构建查询条件(不添加按照创建时间排序，数据本来就是主键越大创建时间越大
         // 不添加这样可以减少排序全部数据在分页的全盘扫描消耗)

@@ -76,6 +76,20 @@ public interface AgentChatHistoryService extends IRepository<AgentChatHistoryEnt
     int deleteBySessionId(String agentId, String sessionId);
 
     /**
+     * 只保留智能体最近的 keep 段会话，删除更早的会话（文字、音频与标题）
+     *
+     * @param agentId 智能体ID
+     * @param keep    保留的会话数
+     * @return 删除的会话数
+     */
+    int pruneSessions(String agentId, int keep);
+
+    /**
+     * 获取有聊天记录的所有智能体ID
+     */
+    List<String> getAgentIdsWithHistory();
+
+    /**
      * 根据智能体ID获取最近50条用户的聊天记录数据（带音频数据）
      *
      * @param agentId 智能体id

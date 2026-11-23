@@ -4,6 +4,8 @@ import java.util.Base64;
 import java.util.Date;
 import java.util.Objects;
 
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,6 +36,9 @@ import xiaozhi.modules.device.service.DeviceService;
 @Slf4j
 @RequiredArgsConstructor
 public class AgentChatHistoryBizServiceImpl implements AgentChatHistoryBizService {
+    /** 每个智能体最多保留的会话数 */
+    private static final int MAX_SESSIONS_PER_AGENT = 5;
+
     private final AgentService agentService;
     private final AgentChatHistoryService agentChatHistoryService;
     private final AgentChatAudioService agentChatAudioService;
@@ -72,6 +77,8 @@ public class AgentChatHistoryBizServiceImpl implements AgentChatHistoryBizServic
             saveChatText(report, agentId, macAddress, audioId, reportTimeMillis);
         }
 
+        pruneOldSessions(agentId);
+
         // 更新设备最后对话时间
         redisUtils.set(RedisKeys.getAgentDeviceLastConnectedAtById(agentId), new Date());
 
@@ -84,6 +91,32 @@ public class AgentChatHistoryBizServiceImpl implements AgentChatHistoryBizServic
         }
 
         return Boolean.TRUE;
+    }
+
+    /**
+     * 每个智能体只保留最近 MAX_SESSIONS_PER_AGENT 段会话
+     */
+    private void pruneOldSessions(String agentId) {
+        try {
+            int removed = agentChatHistoryService.pruneSessions(agentId, MAX_SESSIONS_PER_AGENT);
+            if (removed > 0) {
+                log.info("智能体 {} 超过 {} 段会话，已删除 {} 段较早的会话", agentId, MAX_SESSIONS_PER_AGENT, removed);
+            }
+        } catch (Exception e) {
+            log.error("清理智能体 {} 的较早会话失败", agentId, e);
+        }
+    }
+
+    /**
+     * 启动时清理一次已存在的超额会话
+     */
+    @EventListener(ApplicationReadyEvent.class)
+    public void pruneAllAgentsOnStartup() {
+        try {
+            agentChatHistoryService.getAgentIdsWithHistory().forEach(this::pruneOldSessions);
+        } catch (Exception e) {
+            log.error("启动时清理较早会话失败", e);
+        }
     }
 
     /**

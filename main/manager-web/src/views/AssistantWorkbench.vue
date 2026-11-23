@@ -20,7 +20,7 @@
           <div class="session-heading">
             <div>
               <h2>對話</h2>
-              <span>{{ sessions.length }} 段已載入</span>
+              <span>{{ sessions.length }} 段 · 只保留最近 5 段</span>
             </div>
             <div class="session-actions">
               <button class="new-chat-button" :class="{ active: chatMode === 'live' }" type="button" :disabled="!selectedAgentId" @click="startWebChat">
