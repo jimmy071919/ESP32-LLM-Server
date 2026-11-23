@@ -7,6 +7,10 @@ databaseChangeLog:
   - changeSet:
       id: 202611230001-sqlite-baseline
       author: jimmy
+      # The baseline only runs on an empty database (see precondition); allow corrections to it
+      # without breaking databases where it was marked as ran.
+      validCheckSum:
+        - ANY
       preConditions:
         - onFail: MARK_RAN
         - not:

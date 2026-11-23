@@ -108,7 +108,7 @@ CREATE TABLE "ai_agent_snapshot" (
   "agent_id" TEXT COLLATE NOCASE NOT NULL,
   "user_id" INTEGER,
   "version_no" INTEGER NOT NULL,
-  "snapshot_data" TEXT NOT NULL DEFAULT 'json_object()',
+  "snapshot_data" TEXT NOT NULL DEFAULT '{}',
   "changed_fields" TEXT,
   "source" TEXT COLLATE NOCASE DEFAULT 'config',
   "restore_from_snapshot_id" TEXT COLLATE NOCASE,

@@ -51,8 +51,10 @@ def sqlite_default(col) -> str:
     d = str(default)
     if d.upper().startswith("CURRENT_TIMESTAMP") or d.lower() in ("now()", "current_timestamp()"):
         return " DEFAULT (datetime('now','localtime'))"
-    if "default_generated" in extra and d.startswith("("):
-        return ""  # expression defaults (rare) are left to the application
+    if "default_generated" in extra and not d.upper().startswith("CURRENT_TIMESTAMP"):
+        # MySQL expression defaults: keep the JSON ones as literals, leave others to the application
+        expr = "".join(ch for ch in d.lower() if ch not in "() \t")
+        return {"json_object": " DEFAULT '{}'", "json_array": " DEFAULT '[]'"}.get(expr, "")
     if d.upper() == "NULL":
         return " DEFAULT NULL"
     if sqlite_type(data_type) in ("INTEGER", "REAL", "NUMERIC"):
