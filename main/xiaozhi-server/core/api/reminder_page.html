@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>小智提醒</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#1d2433;--muted:#6b7385;--line:#e3e6ec;--accent:#f2b705;--accent-ink:#3a2c00;--danger:#c8372d;--ok:#1f8a4c}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif}
+main{max-width:720px;margin:0 auto;padding:28px 16px 60px}
+h1{font-size:24px;margin:0 0 4px}
+.sub{color:var(--muted);margin:0 0 20px;font-size:13px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:18px}
+label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+input[type=text],input[type=time],input[type=date]{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font:inherit;background:#fff;color:var(--ink)}
+input:focus{outline:2px solid var(--accent);outline-offset:1px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+.seg{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+.seg button,.days button{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 14px;font:inherit;cursor:pointer;color:var(--ink)}
+.seg button.on,.days button.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+.days{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
+.days button{width:40px;padding:6px 0}
+.actions{display:flex;gap:8px;margin-top:16px}
+.btn{border:0;border-radius:10px;padding:10px 18px;font:inherit;font-weight:600;cursor:pointer}
+.primary{background:var(--ink);color:#fff}
+.ghost{background:#fff;border:1px solid var(--line);color:var(--ink)}
+.msg{margin-top:10px;font-size:13px;min-height:18px}
+.msg.err{color:var(--danger)}.msg.ok{color:var(--ok)}
+ul{list-style:none;margin:0;padding:0}
+li{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+li:first-child{border-top:0}
+.time{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;min-width:68px}
+.info{flex:1;min-width:0}
+.info .t{font-weight:600;word-break:break-word}
+.info .m{font-size:12px;color:var(--muted)}
+li.off{opacity:.45}
+.icon{border:1px solid var(--line);background:#fff;border-radius:8px;padding:5px 10px;cursor:pointer;font:inherit;font-size:13px;color:var(--ink)}
+.icon.del{color:var(--danger)}
+.empty{color:var(--muted);text-align:center;padding:16px 0}
+.hidden{display:none}
+.login{text-align:center;padding:28px 18px}
+.login a{display:inline-block;margin-top:12px;background:var(--ink);color:#fff;text-decoration:none;border-radius:10px;padding:10px 18px;font-weight:600}
+@media (max-width:520px){.row{grid-template-columns:1fr}li{flex-wrap:wrap}}
+</style>
+</head>
+<body>
+<main>
+<h1>小智提醒</h1>
+<p class="sub" id="device">時間到時，小智會在待機狀態直接說出提醒。</p>
+
+<section class="card login hidden" id="login">
+  <div>請先登入智控台，登入後再回到這個頁面。</div>
+  <a href="/#/login">前往登入</a>
+</section>
+
+<div id="app">
+<section class="card">
+  <label for="text">要提醒的事情</label>
+  <input id="text" type="text" maxlength="200" placeholder="例如：吃藥、出門倒垃圾">
+  <div class="seg" id="mode">
+    <button data-mode="once" class="on">單次</button>
+    <button data-mode="daily">每天</button>
+    <button data-mode="weekdays">平日</button>
+    <button data-mode="custom">自訂星期</button>
+  </div>
+  <div class="row">
+    <div><label for="time">時間</label><input id="time" type="time" required></div>
+    <div id="dateBox"><label for="date">日期</label><input id="date" type="date"></div>
+  </div>
+  <div class="days hidden" id="days"></div>
+  <div class="actions">
+    <button class="btn primary" id="save">新增提醒</button>
+    <button class="btn ghost" id="test">立即試播</button>
+  </div>
+  <div class="msg" id="msg"></div>
+</section>
+
+<section class="card">
+  <ul id="list"></ul>
+</section>
+</div>
+</main>
+<script>
+const W=["一","二","三","四","五","六","日"];
+const STATUS={notified:"已推送",spoken:"已在對話中說出",offline:"裝置離線",busy:"裝置忙碌",error:"失敗",missed:"已錯過"};
+let mode="once",picked=new Set();
+const $=id=>document.getElementById(id);
+const pad=n=>String(n).padStart(2,"0");
+const now=new Date();
+$("date").value=`${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+const t=new Date(now.getTime()+5*60000);$("time").value=`${pad(t.getHours())}:${pad(t.getMinutes())}`;
+W.forEach((w,i)=>{const b=document.createElement("button");b.textContent=w;b.onclick=()=>{picked.has(i)?picked.delete(i):picked.add(i);b.classList.toggle("on")};$("days").appendChild(b)});
+document.querySelectorAll("#mode button").forEach(b=>b.onclick=()=>{
+  mode=b.dataset.mode;document.querySelectorAll("#mode button").forEach(x=>x.classList.toggle("on",x===b));
+  $("dateBox").classList.toggle("hidden",mode!=="once");$("days").classList.toggle("hidden",mode!=="custom");
+});
+function say(text,cls){$("msg").textContent=text;$("msg").className="msg "+(cls||"")}
+function daysFor(){return mode==="daily"?[0,1,2,3,4,5,6]:mode==="weekdays"?[0,1,2,3,4]:mode==="custom"?[...picked]:[]}
+function repeatLabel(r){
+  if(!r.days)return r.date;
+  const d=r.days.split(",").map(Number);
+  if(d.length===7)return"每天";
+  if(d.join()==="0,1,2,3,4")return"平日";
+  return"每週"+d.map(i=>W[i]).join("、");
+}
+function fmt(ts){if(!ts)return"";const d=new Date(ts*1000);return`${d.getMonth()+1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`}
+function token(){try{return JSON.parse(localStorage.getItem("token")||"{}").token||""}catch(e){return""}}
+function needLogin(){$("login").classList.remove("hidden");$("app").classList.add("hidden")}
+async function api(path,opt={}){
+  const r=await fetch("/reminders/api"+path,{headers:{"Content-Type":"application/json","Authorization":"Bearer "+token()},...opt});
+  if(r.status===401){needLogin();throw new Error("請先登入智控台")}
+  const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||r.statusText);return j;
+}
+async function load(){
+  const {items,device}=await api("/items");
+  if(device)$("device").textContent=`裝置 ${device}，時間到時小智會在待機狀態直接說出提醒。`;
+  const ul=$("list");ul.innerHTML="";
+  if(!items.length){ul.innerHTML='<li class="empty">還沒有提醒</li>';return}
+  for(const r of items){
+    const li=document.createElement("li");if(!r.enabled)li.className="off";
+    const st=r.last_status?(STATUS[r.last_status]||(r.last_status.startsWith("retrying")?"重試中":r.last_status)):"";
+    li.innerHTML=`<div class="time">${r.time}</div><div class="info"><div class="t"></div><div class="m">${repeatLabel(r)}${r.next_at?" · 下次 "+fmt(r.next_at):""}${st?" · "+st:""}</div></div>`;
+    li.querySelector(".t").textContent=r.text;
+    const tog=document.createElement("button");tog.className="icon";tog.textContent=r.enabled?"停用":"啟用";
+    tog.onclick=async()=>{try{await api("/items/"+r.id,{method:"PUT",body:JSON.stringify({enabled:!r.enabled})});load()}catch(e){say(e.message,"err")}};
+    const del=document.createElement("button");del.className="icon del";del.textContent="刪除";
+    del.onclick=async()=>{if(!confirm("刪除這個提醒？"))return;await api("/items/"+r.id,{method:"DELETE"});load()};
+    li.append(tog,del);ul.appendChild(li);
+  }
+}
+$("save").onclick=async()=>{
+  try{
+    if(mode==="custom"&&!picked.size)throw new Error("請選擇星期");
+    await api("/items",{method:"POST",body:JSON.stringify({text:$("text").value,time:$("time").value,date:mode==="once"?$("date").value:null,days:daysFor()})});
+    $("text").value="";say("已新增","ok");load();
+  }catch(e){say(e.message,"err")}
+};
+$("test").onclick=async()=>{
+  try{say("試播中…");const {status}=await api("/test",{method:"POST",body:JSON.stringify({text:$("text").value||"這是一則測試提醒"})});say(STATUS[status]||status,status==="notified"||status==="spoken"?"ok":"err")}catch(e){say(e.message,"err")}
+};
+if(!token())needLogin();else{load().catch(()=>{});setInterval(()=>load().catch(()=>{}),30000)}
+</script>
+</body>
+</html>

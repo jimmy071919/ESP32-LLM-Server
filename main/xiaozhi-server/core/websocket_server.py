@@ -31,6 +31,7 @@ _setup_websockets_logger()
 
 
 from core.connection import ConnectionHandler
+from core import reminders
 from config.config_loader import get_config_from_api_async
 from core.auth import AuthManager, AuthenticationError
 from core.utils.modules_initialize import initialize_modules
@@ -117,6 +118,14 @@ class WebSocketServer:
             await websocket.send("认证失败")
             await websocket.close()
             return
+        from urllib.parse import parse_qs, urlparse
+
+        channel = parse_qs(urlparse(websocket.request.path or "").query).get("channel")
+        if channel == ["notify"]:
+            await reminders.serve_notify_channel(
+                websocket, websocket.request.headers.get("device-id")
+            )
+            return
         # 创建ConnectionHandler时传入当前server实例
         handler = ConnectionHandler(
             self.config,
@@ -127,11 +136,14 @@ class WebSocketServer:
             self._intent,
             self,  # 传入server实例
         )
+        device_id = websocket.request.headers.get("device-id")
+        reminders.register_connection(device_id, handler)
         try:
             await handler.handle_connection(websocket)
         except Exception as e:
             self.logger.bind(tag=TAG).error(f"处理连接时出错: {e}")
         finally:
+            reminders.unregister_connection(device_id, handler)
             # 强制关闭连接（如果还没有关闭的话）
             try:
                 # 安全地检查WebSocket状态并关闭

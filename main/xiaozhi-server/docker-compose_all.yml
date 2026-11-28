@@ -25,6 +25,8 @@ services:
     # 已移除 seccomp:unconfined，使用 Docker 預設 seccomp 設定檔
     environment:
       - TZ=Asia/Taipei
+      - REMINDER_DEVICE_MAC=7c:e8:b1:e4:79:fc
+      - REMINDER_AUDIO_BASE_URL=https://aiot.snab.win
     volumes:
       # 配置文件目录
       - ./data:/opt/xiaozhi-esp32-server/data
@@ -33,6 +35,11 @@ services:
       # 原始碼已由 Dockerfile-server-deps 打包進映像，不再逐檔掛載覆寫。
       # 提示詞保留唯讀掛載，方便不重建映像即可調整。
       - ./agent-base-prompt.txt:/opt/xiaozhi-esp32-server/agent-base-prompt.txt:ro
+      - ./core/http_server.py:/opt/xiaozhi-esp32-server/core/http_server.py:ro
+      - ./core/websocket_server.py:/opt/xiaozhi-esp32-server/core/websocket_server.py:ro
+      - ./core/reminders.py:/opt/xiaozhi-esp32-server/core/reminders.py:ro
+      - ./core/api/reminder_handler.py:/opt/xiaozhi-esp32-server/core/api/reminder_handler.py:ro
+      - ./core/api/reminder_page.html:/opt/xiaozhi-esp32-server/core/api/reminder_page.html:ro
 
   # manager-api和manager-web模块
   xiaozhi-esp32-server-web:

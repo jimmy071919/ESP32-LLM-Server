@@ -3,6 +3,8 @@ from aiohttp import web
 from config.logger import setup_logging
 from core.api.ota_handler import OTAHandler
 from core.api.vision_handler import VisionHandler
+from core.api.reminder_handler import ReminderHandler
+from core.reminders import ReminderService
 
 TAG = __name__
 
@@ -13,6 +15,10 @@ class SimpleHttpServer:
         self.logger = setup_logging()
         self.ota_handler = OTAHandler(config)
         self.vision_handler = VisionHandler(config)
+        self.reminder_service = ReminderService(config)
+        self.reminder_handler = ReminderHandler(
+            self.reminder_service, config.get("manager-api", {}).get("url", "")
+        )
 
     def _get_websocket_url(self, local_ip: str, port: int) -> str:
         """获取websocket地址
@@ -40,7 +46,7 @@ class SimpleHttpServer:
             port = int(server_config.get("http_port", 8003))
 
             if port:
-                app = web.Application()
+                app = web.Application(middlewares=[self.reminder_handler.middleware])
 
                 if not read_config_from_api:
                     # 如果没有开启智控台，只是单模块运行，就需要再添加简单OTA接口，用于下发websocket接口
@@ -74,6 +80,8 @@ class SimpleHttpServer:
                         ),
                     ]
                 )
+                app.add_routes(self.reminder_handler.routes())
+                asyncio.create_task(self.reminder_service.run())
 
                 # 运行服务
                 runner = web.AppRunner(app)
