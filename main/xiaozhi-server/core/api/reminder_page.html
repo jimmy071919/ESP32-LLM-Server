@@ -3,13 +3,21 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>小智提醒</title>
+<title>提醒與行事曆｜小智管理平台</title>
 <style>
-:root{--bg:#f6f7f9;--card:#fff;--ink:#1d2433;--muted:#6b7385;--line:#e3e6ec;--accent:#f2b705;--accent-ink:#3a2c00;--danger:#c8372d;--ok:#1f8a4c}
+:root{--bg:#f5f7fa;--card:#fff;--ink:#1d2433;--muted:#6b7280;--line:#e5e7eb;--accent:#2563eb;--accent-soft:#eff6ff;--danger:#c8372d;--ok:#1f8a4c}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif}
-main{max-width:720px;margin:0 auto;padding:28px 16px 60px}
-h1{font-size:24px;margin:0 0 4px}
+header{height:64px;background:rgba(255,255,255,.96);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 24px}
+.brand{display:flex;align-items:center;gap:10px;color:var(--ink);text-decoration:none;font-weight:650;min-width:180px}
+.brand-mark{width:30px;height:30px;display:grid;place-items:center}
+.brand-mark svg{width:100%;height:100%}
+.top-nav{height:100%;display:flex;align-items:center}
+.top-nav a{display:flex;align-items:center;gap:7px;padding:9px 14px;border-radius:8px;color:#1d4ed8;background:var(--accent-soft);text-decoration:none;font-weight:500}
+.back{display:flex;align-items:center;gap:7px;padding:9px 13px;border-radius:8px;color:#4b5563;text-decoration:none;font-weight:500;transition:background .2s,color .2s}
+.back:hover{background:#f3f4f6;color:var(--ink)}
+main{max-width:760px;margin:0 auto;padding:30px 16px 60px}
+h1{font-size:24px;margin:0 0 4px;font-weight:650;letter-spacing:-.02em}
 .sub{color:var(--muted);margin:0 0 20px;font-size:13px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:18px}
 label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
@@ -18,12 +26,13 @@ input:focus{outline:2px solid var(--accent);outline-offset:1px}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
 .seg{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
 .seg button,.days button{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 14px;font:inherit;cursor:pointer;color:var(--ink)}
-.seg button.on,.days button.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+.seg button.on,.days button.on{background:var(--accent-soft);border-color:#bfdbfe;color:#1d4ed8;font-weight:600}
 .days{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
 .days button{width:40px;padding:6px 0}
 .actions{display:flex;gap:8px;margin-top:16px}
 .btn{border:0;border-radius:10px;padding:10px 18px;font:inherit;font-weight:600;cursor:pointer}
-.primary{background:var(--ink);color:#fff}
+.primary{background:#2563eb;color:#fff}
+.primary:hover{background:#1d4ed8}
 .ghost{background:#fff;border:1px solid var(--line);color:var(--ink)}
 .msg{margin-top:10px;font-size:13px;min-height:18px}
 .msg.err{color:var(--danger)}.msg.ok{color:var(--ok)}
@@ -40,13 +49,21 @@ li.off{opacity:.45}
 .empty{color:var(--muted);text-align:center;padding:16px 0}
 .hidden{display:none}
 .login{text-align:center;padding:28px 18px}
-.login a{display:inline-block;margin-top:12px;background:var(--ink);color:#fff;text-decoration:none;border-radius:10px;padding:10px 18px;font-weight:600}
-@media (max-width:520px){.row{grid-template-columns:1fr}li{flex-wrap:wrap}}
+.login a{display:inline-block;margin-top:12px;background:#2563eb;color:#fff;text-decoration:none;border-radius:10px;padding:10px 18px;font-weight:600}
+@media (max-width:600px){header{padding:0 14px}.brand{min-width:auto}.brand-name{display:none}.back{padding:8px 9px;font-size:13px}main{padding-top:22px}.row{grid-template-columns:1fr}li{flex-wrap:wrap}}
 </style>
 </head>
 <body>
+<header>
+  <a class="brand" href="/#/home" aria-label="返回小智管理平台">
+    <span class="brand-mark"><svg viewBox="0 0 64 64" aria-hidden="true"><line x1="32" y1="7" x2="32" y2="15" stroke="#111827" stroke-width="4" stroke-linecap="round"/><circle cx="32" cy="6" r="4.5" fill="#111827"/><rect x="3" y="29" width="7" height="14" rx="3.5" fill="#111827"/><rect x="54" y="29" width="7" height="14" rx="3.5" fill="#111827"/><rect x="8" y="14" width="48" height="44" rx="15" fill="#111827"/><circle cx="24" cy="34" r="5" fill="#fff"/><circle cx="40" cy="34" r="5" fill="#fff"/><line x1="26" y1="46" x2="38" y2="46" stroke="#fff" stroke-width="4" stroke-linecap="round"/></svg></span>
+    <span class="brand-name">小智管理平台</span>
+  </a>
+  <nav class="top-nav" aria-label="目前位置"><a href="/reminders" aria-current="page">提醒與行事曆</a></nav>
+  <a class="back" href="/#/home"><span aria-hidden="true">←</span><span>返回控制台</span></a>
+</header>
 <main>
-<h1>小智提醒</h1>
+<h1>提醒與行事曆</h1>
 <p class="sub" id="device">時間到時，小智會在待機狀態直接說出提醒。</p>
 
 <section class="card login hidden" id="login">
