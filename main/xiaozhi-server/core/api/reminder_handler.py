@@ -7,7 +7,6 @@ from aiohttp import web
 
 from core import reminders
 
-PAGE = os.path.join(os.path.dirname(__file__), "reminder_page.html")
 AUDIO_NAME = re.compile(r"^[0-9a-f]{32}\.ogg$")
 
 
@@ -55,7 +54,7 @@ class ReminderHandler:
         return await handler(request)
 
     async def page(self, request):
-        return web.FileResponse(PAGE, headers={"Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store"})
+        raise web.HTTPFound("/#/reminders")
 
     async def list_items(self, request):
         return web.json_response({"items": reminders.list_reminders(), "device": reminders.DEVICE_MAC})

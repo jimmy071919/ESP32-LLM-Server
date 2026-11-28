@@ -47,6 +47,13 @@ const routes = [
     }
   },
   {
+    path: '/reminders',
+    name: 'Reminders',
+    component: function () {
+      return import('../views/Reminders.vue')
+    }
+  },
+  {
     path: '/register',
     name: 'Register',
     component: function () {
