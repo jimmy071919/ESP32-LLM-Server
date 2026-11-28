@@ -43,7 +43,7 @@ services:
 
   # manager-api和manager-web模块
   xiaozhi-esp32-server-web:
-    image: xiaozhi-server-sv-web:reminders-spa-final-20261128
+    image: xiaozhi-server-sv-web:reminders-multidevice-20261128
     build:
       context: ../..
       dockerfile: Dockerfile-web

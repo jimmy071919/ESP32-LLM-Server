@@ -17,7 +17,7 @@ logger = setup_logging()
 DB_PATH = os.environ.get("REMINDER_DB", "data/reminders.db")
 AUDIO_DIR = os.environ.get("REMINDER_AUDIO_DIR", "data/reminder_audio")
 AUDIO_BASE_URL = os.environ.get("REMINDER_AUDIO_BASE_URL", "https://aiot.snab.win")
-DEVICE_MAC = os.environ.get("REMINDER_DEVICE_MAC", "")
+DEFAULT_DEVICE_MAC = os.environ.get("REMINDER_DEVICE_MAC", "").lower()
 RETRY_SECONDS = 30
 GIVE_UP_SECONDS = 600
 AUDIO_KEEP_SECONDS = 86400
@@ -76,6 +76,7 @@ def _db():
     conn.execute(
         """CREATE TABLE IF NOT EXISTS reminders (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            device_mac TEXT NOT NULL DEFAULT '',
             text TEXT NOT NULL,
             time TEXT NOT NULL,
             date TEXT,
@@ -88,6 +89,11 @@ def _db():
             created_at REAL NOT NULL
         )"""
     )
+    columns = {row[1] for row in conn.execute("PRAGMA table_info(reminders)")}
+    if "device_mac" not in columns:
+        conn.execute("ALTER TABLE reminders ADD COLUMN device_mac TEXT NOT NULL DEFAULT ''")
+        if DEFAULT_DEVICE_MAC:
+            conn.execute("UPDATE reminders SET device_mac=? WHERE device_mac=''", (DEFAULT_DEVICE_MAC,))
     return conn
 
 
@@ -118,15 +124,17 @@ def _row(r):
     return item
 
 
-def list_reminders():
+def list_reminders(device_mac):
     with _db() as conn:
         rows = conn.execute(
-            "SELECT * FROM reminders ORDER BY enabled DESC, next_at IS NULL, next_at, id"
+            "SELECT * FROM reminders WHERE device_mac=? ORDER BY enabled DESC, next_at IS NULL, next_at, id",
+            (device_mac.lower(),),
         ).fetchall()
     return [_row(r) for r in rows]
 
 
 def validate(data):
+    device_mac = str(data.get("device_mac") or DEFAULT_DEVICE_MAC).strip().lower()
     text = str(data.get("text", "")).strip()
     time_str = str(data.get("time", "")).strip()
     date_str = str(data.get("date") or "").strip() or None
@@ -134,6 +142,8 @@ def validate(data):
     if isinstance(days, str):
         days = [d for d in days.split(",") if d != ""]
     days = sorted({int(d) for d in days if 0 <= int(d) <= 6})
+    if not device_mac:
+        raise ValueError("請選擇提醒裝置")
     if not text or len(text) > 200:
         raise ValueError("提醒內容需為 1 到 200 字")
     datetime.strptime(time_str, "%H:%M")
@@ -143,52 +153,55 @@ def validate(data):
         date.fromisoformat(date_str)
     else:
         date_str = None
-    return text, time_str, date_str, ",".join(str(d) for d in days)
+    return device_mac, text, time_str, date_str, ",".join(str(d) for d in days)
 
 
 def create_reminder(data):
-    text, time_str, date_str, days = validate(data)
+    device_mac, text, time_str, date_str, days = validate(data)
     next_at = compute_next(time_str, date_str, days, time.time())
     if next_at is None:
         raise ValueError("提醒時間已經過去")
     with _db() as conn:
         cur = conn.execute(
-            "INSERT INTO reminders (text, time, date, days, enabled, next_at, created_at) VALUES (?,?,?,?,1,?,?)",
-            (text, time_str, date_str, days, next_at, time.time()),
+            "INSERT INTO reminders (device_mac, text, time, date, days, enabled, next_at, created_at) VALUES (?,?,?,?,?,1,?,?)",
+            (device_mac, text, time_str, date_str, days, next_at, time.time()),
         )
         rid = cur.lastrowid
     return get_reminder(rid)
 
 
-def update_reminder(rid, data):
-    current = get_reminder(rid)
+def update_reminder(rid, data, device_mac):
+    current = get_reminder(rid, device_mac)
     if current is None:
         return None
     merged = {**current, **data}
     if isinstance(merged.get("days"), str):
         merged["days"] = [d for d in merged["days"].split(",") if d != ""]
-    text, time_str, date_str, days = validate(merged)
+    _, text, time_str, date_str, days = validate({**merged, "device_mac": device_mac})
     enabled = bool(merged.get("enabled", True))
     next_at = compute_next(time_str, date_str, days, time.time()) if enabled else None
     if enabled and next_at is None:
         raise ValueError("提醒時間已經過去")
     with _db() as conn:
         conn.execute(
-            "UPDATE reminders SET text=?, time=?, date=?, days=?, enabled=?, next_at=?, retry_at=NULL WHERE id=?",
-            (text, time_str, date_str, days, int(enabled), next_at, rid),
+            "UPDATE reminders SET text=?, time=?, date=?, days=?, enabled=?, next_at=?, retry_at=NULL WHERE id=? AND device_mac=?",
+            (text, time_str, date_str, days, int(enabled), next_at, rid, device_mac.lower()),
         )
-    return get_reminder(rid)
+    return get_reminder(rid, device_mac)
 
 
-def get_reminder(rid):
+def get_reminder(rid, device_mac=None):
     with _db() as conn:
-        r = conn.execute("SELECT * FROM reminders WHERE id=?", (rid,)).fetchone()
+        if device_mac:
+            r = conn.execute("SELECT * FROM reminders WHERE id=? AND device_mac=?", (rid, device_mac.lower())).fetchone()
+        else:
+            r = conn.execute("SELECT * FROM reminders WHERE id=?", (rid,)).fetchone()
     return _row(r) if r else None
 
 
-def delete_reminder(rid):
+def delete_reminder(rid, device_mac):
     with _db() as conn:
-        return conn.execute("DELETE FROM reminders WHERE id=?", (rid,)).rowcount > 0
+        return conn.execute("DELETE FROM reminders WHERE id=? AND device_mac=?", (rid, device_mac.lower())).rowcount > 0
 
 
 class ReminderService:
@@ -198,7 +211,7 @@ class ReminderService:
 
     async def run(self):
         os.makedirs(AUDIO_DIR, exist_ok=True)
-        logger.bind(tag=TAG).info(f"提醒排程啟動，裝置 {DEVICE_MAC or '未設定'}")
+        logger.bind(tag=TAG).info("提醒排程啟動")
         while True:
             try:
                 await self.tick()
@@ -223,7 +236,7 @@ class ReminderService:
         if late > GIVE_UP_SECONDS:
             status = "missed"
         else:
-            status = await self.deliver(r["text"])
+            status = await self.deliver(r["device_mac"], r["text"])
         if status in ("offline", "error") and late + RETRY_SECONDS <= GIVE_UP_SECONDS:
             with _db() as conn:
                 conn.execute(
@@ -239,10 +252,10 @@ class ReminderService:
             )
         logger.bind(tag=TAG).info(f"提醒 #{r['id']} {r['text']} -> {status}")
 
-    async def deliver(self, text):
+    async def deliver(self, device_mac, text):
         async with self.lock:
             spoken = f"提醒你，{text}"
-            conn = active_connections.get(DEVICE_MAC.lower())
+            conn = active_connections.get(device_mac.lower())
             if conn is not None and getattr(conn, "tts", None) is not None and not conn.stop_event.is_set():
                 from core.handle.intentHandler import speak_txt
 
@@ -251,11 +264,11 @@ class ReminderService:
                 speak_txt(conn, spoken)
                 conn.last_activity_time = time.time() * 1000
                 return "spoken"
-            channel = notify_channels.get(DEVICE_MAC.lower())
+            channel = notify_channels.get(device_mac.lower())
             if channel is None:
                 return "offline"
             try:
-                name = await self.render_audio(spoken)
+                name = await self.render_audio(device_mac, spoken)
             except Exception as e:
                 logger.bind(tag=TAG).error(f"提醒語音產生失敗: {e}")
                 return "error"
@@ -271,17 +284,17 @@ class ReminderService:
                 return "offline"
             return "notified"
 
-    async def tts_instance(self):
+    async def tts_instance(self, device_mac):
         cfg = copy.deepcopy(self.config)
         if cfg.get("read_config_from_api"):
-            private = await get_private_config_from_api(cfg, DEVICE_MAC, DEVICE_MAC)
+            private = await get_private_config_from_api(cfg, device_mac, device_mac)
             if private.get("TTS"):
                 cfg["TTS"] = private["TTS"]
                 cfg["selected_module"]["TTS"] = private["selected_module"]["TTS"]
         return initialize_tts(cfg)
 
-    async def render_audio(self, text):
-        tts = await self.tts_instance()
+    async def render_audio(self, device_mac, text):
+        tts = await self.tts_instance(device_mac)
         name = f"{uuid.uuid4().hex}.ogg"
         raw = os.path.join(AUDIO_DIR, f"{name}.src")
         out = os.path.join(AUDIO_DIR, name)

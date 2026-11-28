@@ -5,11 +5,25 @@
       <div class="page-heading">
         <div>
           <h1>提醒與行事曆</h1>
-          <p>{{ device ? `裝置 ${device} · 時間到時小智會直接提醒你` : '時間到時，小智會在待機狀態直接說出提醒。' }}</p>
+          <p>{{ selectedDeviceInfo ? `${deviceLabel(selectedDeviceInfo)} · 時間到時小智會直接提醒你` : '時間到時，小智會在待機狀態直接說出提醒。' }}</p>
         </div>
-        <el-button icon="el-icon-refresh" :loading="loading" @click="load">重新整理</el-button>
+        <div class="heading-actions">
+          <div v-if="devices.length" class="device-picker">
+            <label for="reminder-device">提醒裝置</label>
+            <el-select id="reminder-device" v-model="selectedDevice" filterable @change="changeDevice">
+              <el-option v-for="item in devices" :key="item.macAddress" :value="item.macAddress" :label="`${deviceLabel(item)} · ${item.online ? '在線' : '離線'}`" />
+            </el-select>
+          </div>
+          <el-button icon="el-icon-refresh" :loading="loading" @click="load">重新整理</el-button>
+        </div>
       </div>
 
+      <section v-if="!devices.length" class="panel empty-state device-empty">
+        <i :class="loading ? 'el-icon-loading' : 'el-icon-monitor'"></i>
+        <strong>{{ loading ? '載入裝置中…' : '目前沒有可設定提醒的裝置' }}</strong>
+        <span v-if="!loading">請先在智控台新增智能體並綁定裝置。</span>
+      </section>
+      <template v-else>
       <section class="panel create-panel">
         <div class="panel-heading">
           <h2>新增提醒</h2>
@@ -69,6 +83,7 @@
           </li>
         </ul>
       </section>
+      </template>
     </main>
   </div>
 </template>
@@ -84,7 +99,9 @@ export default {
     const soon = new Date(now.getTime() + 5 * 60000)
     return {
       reminders: [],
-      device: '',
+      devices: [],
+      selectedDevice: '',
+      defaultDevice: '',
       loading: false,
       saving: false,
       testing: false,
@@ -103,6 +120,11 @@ export default {
       message: '',
       messageType: '',
       refreshTimer: null
+    }
+  },
+  computed: {
+    selectedDeviceInfo() {
+      return this.devices.find(device => device.macAddress === this.selectedDevice)
     }
   },
   mounted() {
@@ -146,14 +168,46 @@ export default {
     async load() {
       this.loading = true
       try {
-        const data = await this.request('/items')
-        this.reminders = data.items
-        this.device = data.device
+        const data = await this.request('/devices')
+        this.devices = data.devices
+        this.defaultDevice = data.default_device
+        if (!this.devices.length) {
+          this.selectedDevice = ''
+          this.reminders = []
+          return
+        }
+        const saved = localStorage.getItem('reminders.device')
+        if (!this.devices.some(device => device.macAddress === this.selectedDevice)) {
+          this.selectedDevice = this.devices.some(device => device.macAddress === saved)
+            ? saved
+            : this.defaultDevice || this.devices[0].macAddress
+        }
+        await this.loadItems()
       } catch (error) {
         if (error.message !== '請先登入智控台') this.showMessage(error.message, 'error')
       } finally {
         this.loading = false
       }
+    },
+    async loadItems() {
+      if (!this.selectedDevice) return
+      const data = await this.request(`/items?device_mac=${encodeURIComponent(this.selectedDevice)}`)
+      this.reminders = data.items
+    },
+    async changeDevice() {
+      localStorage.setItem('reminders.device', this.selectedDevice)
+      this.loading = true
+      this.reminders = []
+      try {
+        await this.loadItems()
+      } catch (error) {
+        this.showMessage(error.message, 'error')
+      } finally {
+        this.loading = false
+      }
+    },
+    deviceLabel(device) {
+      return device.alias || device.agentName || device.board || device.macAddress
     },
     setMode(mode) {
       this.mode = mode
@@ -180,6 +234,7 @@ export default {
           method: 'POST',
           body: JSON.stringify({
             text: this.text.trim(),
+            device_mac: this.selectedDevice,
             time: this.time,
             date: this.mode === 'once' ? this.date : null,
             days: this.daysForSave()
@@ -199,7 +254,7 @@ export default {
       try {
         const data = await this.request('/test', {
           method: 'POST',
-          body: JSON.stringify({ text: this.text.trim() || '這是一則測試提醒' })
+          body: JSON.stringify({ device_mac: this.selectedDevice, text: this.text.trim() || '這是一則測試提醒' })
         })
         const labels = { notified: '已送出試播提醒', spoken: '已在對話中說出', offline: '裝置目前離線', busy: '裝置忙碌', error: '試播失敗' }
         this.showMessage(labels[data.status] || data.status, ['notified', 'spoken'].includes(data.status) ? 'success' : 'error')
@@ -211,7 +266,7 @@ export default {
     },
     async toggle(item) {
       try {
-        await this.request(`/items/${item.id}`, {
+        await this.request(`/items/${item.id}?device_mac=${encodeURIComponent(this.selectedDevice)}`, {
           method: 'PUT',
           body: JSON.stringify({ enabled: !item.enabled })
         })
@@ -227,7 +282,7 @@ export default {
           cancelButtonText: '取消',
           type: 'warning'
         })
-        await this.request(`/items/${item.id}`, { method: 'DELETE' })
+        await this.request(`/items/${item.id}?device_mac=${encodeURIComponent(this.selectedDevice)}`, { method: 'DELETE' })
         await this.load()
       } catch (error) {
         if (error !== 'cancel' && error !== 'close') this.showMessage(error.message || '刪除失敗', 'error')
@@ -262,6 +317,10 @@ export default {
 .page-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:22px}
 .page-heading h1{margin:0;font-size:24px;font-weight:650;letter-spacing:-.02em}
 .page-heading p{margin:5px 0 0;color:#6b7280;font-size:13px}
+.heading-actions{display:flex;align-items:flex-end;gap:10px}
+.device-picker{width:260px}
+.device-picker label{display:block;margin:0 0 5px;color:#6b7280;font-size:12px}
+.device-picker .el-select{width:100%}
 .panel{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:20px;margin-bottom:16px}
 .panel-heading{display:flex;align-items:baseline;gap:10px;margin-bottom:18px}
 .panel-heading h2{margin:0;font-size:16px;font-weight:650;color:#1d2433}
@@ -294,5 +353,5 @@ export default {
 .reminder-copy strong{overflow-wrap:anywhere;font-size:14px;font-weight:550}
 .reminder-copy span{color:#6b7280;font-size:12px}
 @media(max-width:900px){.reminders-page ::v-deep .header{min-width:0}.reminders-page ::v-deep .header-container{padding:0 8px}.reminders-page ::v-deep .header-left{min-width:38px}.reminders-page ::v-deep .header-center{flex:1;justify-content:center;gap:0}.reminders-page ::v-deep .equipment-management{min-width:0;padding:7px 8px;font-size:12px}.reminders-page ::v-deep .header-right{gap:3px}.reminders-page ::v-deep .el-user-dropdown{display:none}}
-@media(max-width:700px){.reminders-main{width:calc(100% - 28px);padding-top:22px}.panel{padding:16px}.reminder-item{flex-wrap:wrap}.reminder-copy{min-width:calc(100% - 90px)}.fields-row{gap:10px}}
+@media(max-width:700px){.reminders-main{width:calc(100% - 28px);padding-top:22px}.page-heading{align-items:stretch;flex-direction:column}.heading-actions{align-items:center}.device-picker{flex:1;width:auto;min-width:0}.panel{padding:16px}.reminder-item{flex-wrap:wrap}.reminder-copy{min-width:calc(100% - 90px)}.fields-row{gap:10px}}
 </style>
