@@ -20,6 +20,10 @@
           @click="$router.push('/assistant-workbench')">
           <span class="nav-text">助理工作台</span>
         </div>
+        <a class="equipment-management reminder-entry" href="/reminders" aria-label="提醒與行事曆" title="提醒與行事曆">
+          <i class="el-icon-alarm-clock" aria-hidden="true"></i>
+          <span class="nav-text">提醒</span>
+        </a>
         <!-- 普通用户显示音色克隆 -->
         <div v-if="!userInfo.superAdmin && featureStatus.voiceClone" class="equipment-management"
           :class="{ 'active-tab': $route.path === '/voice-clone-management' }"

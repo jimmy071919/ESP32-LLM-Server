@@ -43,7 +43,7 @@ services:
 
   # manager-api和manager-web模块
   xiaozhi-esp32-server-web:
-    image: xiaozhi-server-sv-web:sqlite-20261123
+    image: xiaozhi-server-sv-web:reminder-link-20261128
     build:
       context: ../..
       dockerfile: Dockerfile-web
